@@ -1,4 +1,6 @@
-const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
+const { inspect } = require("util");
+const { UniversalDdlListener } = require("../parser/UniversalDdlListener");
+const { ruleNameOf } = require("./antlr4-utils");
 
 class DdlExtractor extends UniversalDdlListener {
   constructor(parser) {
@@ -23,9 +25,22 @@ class DdlExtractor extends UniversalDdlListener {
   }
 
   enterColumnDef(ctx) {
+    const typeChildren = ctx.colType().children;
+
     this.currentColumn = {
       name: ctx.IDENTIFIER().getText(),
-      type: ctx.COL_TYPE().getText(),
+      type: typeChildren[0].getText(),
+    }
+
+    if (typeChildren.length >= 4 && ruleNameOf(typeChildren[1]) === "LEFT_BRACKET") {
+      const maxIndex = typeChildren.length - 2;
+      const args = [];
+      for (let i = 2; i <= maxIndex; ++i) {
+        const arg = typeChildren[i];
+        if (ruleNameOf(arg) === "INT_VAL")
+          args.push(parseInt(arg.getText(), 10));
+      }
+      this.currentColumn.typeArgs = args;
     }
   }
 

@@ -15,7 +15,8 @@ fkConstraintDef : KW_CONSTRAINT KW_FK LEFT_BRACKET identifierList RIGHT_BRACKET
 colForeignKeyDef : KW_FK KW_REF IDENTIFIER ( LEFT_BRACKET IDENTIFIER RIGHT_BRACKET )? ;
 
 defaultSpec : KW_DEFAULT (
-                INT_LITERAL 
+                INT_VAL 
+              | INT_LITERAL 
               | FLOAT_LITERAL
               | DATE_LITERAL
               | TIME_LITERAL
@@ -27,10 +28,17 @@ defaultSpec : KW_DEFAULT (
               ) ;
 
 colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | colForeignKeyDef )+ ;
-columnDef : IDENTIFIER COL_TYPE colDetails? ;
+columnDef : IDENTIFIER colType colDetails? ;
 columnDefList : columnDef ( COMMA columnDef )* ;
 tableDef : KW_CREATE KW_TABLE IDENTIFIER LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;
 
+colType : SIMPLE_COL_TYPE
+         | DECIMAL ( LEFT_BRACKET INT_VAL ( COMMA INT_VAL )? RIGHT_BRACKET )?
+         | NUMERIC ( LEFT_BRACKET INT_VAL ( COMMA INT_VAL )? RIGHT_BRACKET )?
+         | FLOAT   ( LEFT_BRACKET INT_VAL RIGHT_BRACKET  )?
+         | CHAR LEFT_BRACKET WS* INT_VAL WS* RIGHT_BRACKET
+         | VARCHAR LEFT_BRACKET WS* INT_VAL WS* RIGHT_BRACKET
+         ;
 
 /**
  * Lexer rules
@@ -80,17 +88,30 @@ fragment TINYINT : T I N Y I N T ;
 fragment SMALLINT : S M A L L I N T ;
 fragment INT : I N T (E G E R)? ;
 fragment BIGINT : B I G I N T ;
-fragment DECIMAL : D E C I M A L ;
-fragment NUMERIC : N U M E R I C ;
-fragment FLOAT : F L O A T ;
 fragment REAL : R E A L ;
 fragment DATE : D A T E ;
 fragment TIME : T I M E ;
 fragment DATETIME : D A T E T I M E ;
 fragment TIMESTAMP : T I M E S T A M P ;
-fragment CHAR : C H A R ;
-fragment VARCHAR : V A R C H A R ;
 fragment TEXT : T E X T ;
+
+DECIMAL : D E C I M A L ;
+NUMERIC : N U M E R I C ;
+FLOAT : F L O A T ;
+CHAR : C H A R ;
+VARCHAR : V A R C H A R ;
+
+SIMPLE_COL_TYPE : TINYINT
+         | SMALLINT
+         | INT
+         | BIGINT
+         | REAL
+         | DATE
+         | TIME
+         | DATETIME
+         | TIMESTAMP
+         | TEXT
+         ;
 
 /*
  * Keywords as fragments
@@ -125,7 +146,8 @@ SEMICOLON : ';' ;
  */
 BIT_LITERAL : '0' | '1' ;
 
-INT_LITERAL : ( '+' | '-' )? DIGIT+ ;
+INT_VAL : DIGIT+ ;
+INT_LITERAL : ( '+' | '-' ) DIGIT+ ;
 
 FLOAT_LITERAL : ( '+' | '-' )? DIGIT+ '.' DIGIT+
               | ( '+' | '-' )? DIGIT+ E DIGIT+ ;
@@ -161,23 +183,6 @@ KW_PK : PRIMARY WS+ KEY ;
 KW_REF : REFERENCES ;
 KW_TABLE : TABLE ;
 KW_UNIQUE : UNIQUE ;
-
-COL_TYPE : TINYINT
-         | SMALLINT
-         | INT
-         | BIGINT
-         | DECIMAL ( LEFT_BRACKET DIGIT+ ( COMMA DIGIT+ )? RIGHT_BRACKET )?
-         | NUMERIC ( LEFT_BRACKET DIGIT+ ( COMMA DIGIT+ )? RIGHT_BRACKET )?
-         | FLOAT   ( LEFT_BRACKET DIGIT+ RIGHT_BRACKET  )?
-         | REAL
-         | DATE
-         | TIME
-         | DATETIME
-         | TIMESTAMP
-         | CHAR LEFT_BRACKET WS* INT_LITERAL WS* RIGHT_BRACKET
-         | VARCHAR LEFT_BRACKET WS* INT_LITERAL WS* RIGHT_BRACKET
-         | TEXT
-         ;
 
 IDENTIFIER : LETTER ( LETTER | UNDERSCORE | DIGIT )* ;
 
