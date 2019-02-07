@@ -1,2 +1,5 @@
 node_modules
-*.class
+
+/antlr-*.jar
+/parser
+/java-parser

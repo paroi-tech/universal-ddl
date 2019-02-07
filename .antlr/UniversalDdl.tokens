@@ -1,0 +1,13 @@
+T__0=1
+T__1=2
+T__2=3
+WS=4
+CREATE=5
+TABLE=6
+INDEX=7
+INT_TYPE=8
+FLOAT_TYPE=9
+IDENTIFIER=10
+','=1
+'('=2
+');'=3
