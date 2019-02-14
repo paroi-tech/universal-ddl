@@ -7,7 +7,7 @@
     "java-antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool UniversalDdl.g4 -o java-parser",
     "java-compile": "javac -cp \"antlr-4.7.2-complete.jar\" java-parser/UniversalDdl*.java",
     "java-build": "npm run java-antlr4 && npm run java-compile",
-    "java-test": "java -cp \"antlr-4.7.2-complete.jar:./java-parser\" org.antlr.v4.gui.TestRig UniversalDdl order -tokens"
+    "java-test": "java -cp \"antlr-4.7.2-complete.jar:./java-parser\" org.antlr.v4.gui.TestRig UniversalDdl tableDef -tokens"
   },
   "repository": {
     "type": "git",

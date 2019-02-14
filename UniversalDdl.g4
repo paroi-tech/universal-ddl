@@ -3,30 +3,34 @@ grammar UniversalDdl ;
 /**
  * Parser rules
  */
-script : WS* (tableDef WS*)+ WS* EOF ;
+script : tableDef+ EOF ;
 
-identifierList : IDENTIFIER WS* ( ',' WS* IDENTIFIER )* ;
+identifierList : IDENTIFIER ( COMMA IDENTIFIER )* ;
 
-pkConstraintDef : CONSTRAINT WS+ PK WS+ '(' identifierList ')' ;
-fkConstraintDef : CONSTRAINT WS+ FK WS+ '(' identifierList ')'
-                  REFERENCES IDENTIFIER ( '(' identifierList ')' )? ;
+uniqueConstraintDef : KW_CONSTRAINT KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+pkConstraintDef : KW_CONSTRAINT KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+fkConstraintDef : KW_CONSTRAINT KW_FK LEFT_BRACKET identifierList RIGHT_BRACKET
+                  KW_REF IDENTIFIER ( LEFT_BRACKET identifierList RIGHT_BRACKET )? ;
 
-colForeignKeyDef : FK WS+ REFERENCES WS+ IDENTIFIER WS* ( '(' WS* IDENTIFIER WS* ')'  )? ;
-colDetails : ( ( PK | UNIQUE | NULL | NOT_NULL | defaultSpec | colForeignKeyDef ) WS+ )+ ;
-columnDef : IDENTIFIER WS+ COL_TYPE WS+ colDetails? ;
-columnDefList : columnDef WS* (',' WS* columnDef)* ;
-tableDef : CREATE WS+ TABLE WS+ IDENTIFIER WS* '(' WS* columnDefList WS* ');' ;
-defaultSpec : D E F A U L T WS+ (
+colForeignKeyDef : KW_FK KW_REF IDENTIFIER ( LEFT_BRACKET IDENTIFIER RIGHT_BRACKET )? ;
+
+defaultSpec : KW_DEFAULT (
                 INT_LITERAL 
               | FLOAT_LITERAL
               | DATE_LITERAL
               | TIME_LITERAL
               | DATETIME_LITERAL
               | STRING_LITERAL
-              | CURRENT_DATE
-              | CURRENT_TIME
-              | CURRENT_TS
+              | KW_CURRENT_DATE
+              | KW_CURRENT_TIME
+              | KW_CURRENT_TS
               ) ;
+
+colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | colForeignKeyDef )+ ;
+columnDef : IDENTIFIER COL_TYPE colDetails? ;
+columnDefList : columnDef ( COMMA columnDef )* ;
+tableDef : KW_CREATE KW_TABLE IDENTIFIER LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;
+
 
 /**
  * Lexer rules
@@ -70,9 +74,51 @@ fragment LETTER : [a-zA-Z] ;
 fragment UNDERSCORE : '_' ;
 
 /*
- * Whitespace
+ * SQL types defined as fragments
  */
-WS : ' ' | '\t' | ('\r'? '\n' | '\r') ;
+fragment TINYINT : T I N Y I N T ;
+fragment SMALLINT : S M A L L I N T ;
+fragment INT : I N T (E G E R)? ;
+fragment BIGINT : B I G I N T ;
+fragment DECIMAL : D E C I M A L ;
+fragment NUMERIC : N U M E R I C ;
+fragment FLOAT : F L O A T ;
+fragment REAL : R E A L ;
+fragment DATE : D A T E ;
+fragment TIME : T I M E ;
+fragment DATETIME : D A T E T I M E ;
+fragment TIMESTAMP : T I M E S T A M P ;
+fragment CHAR : C H A R ;
+fragment VARCHAR : V A R C H A R ;
+fragment TEXT : T E X T ;
+
+/*
+ * Keywords as fragments
+ */
+fragment CONSTRAINT : C O N S T R A I N T ;
+fragment CREATE : C R E A T E ;
+fragment DEFAULT : D E F A U L T ;
+fragment FOREIGN : F O R E I G N ;
+fragment INDEX : I N D E X ;
+fragment KEY : K E Y ;
+fragment NOT : N O T ;
+fragment NULL : N U L L ;
+fragment PRIMARY : P R I M A R Y ;
+fragment REFERENCES : R E F E R E N C E S ;
+fragment TABLE : T A B L E ;
+fragment UNIQUE : U N I Q U E ;
+
+/*
+ * Brackets
+ */
+LEFT_BRACKET  : '(' ;
+RIGHT_BRACKET : ')' ;
+
+/*
+ * Semicolon
+ */
+COMMA : ',' ;
+SEMICOLON : ';' ;
 
 /*
  * Literals for SQL values
@@ -93,47 +139,49 @@ DATETIME_LITERAL : DATE_LITERAL ' ' TIME_LITERAL ;
 STRING_LITERAL : '\'' ( ~'\'' | '\'\'' )* '\'' ;
 
 /*
- * Constraint keywords
- */
-PK : P R I M A R Y WS+ K E Y ;
-FK : F O R E I G N WS+ K E Y ;
-REFERENCES : R E F E R E N C E S ;
-UNIQUE : U N I Q U E ;
-CONSTRAINT : C O N S T R A I N T ;
-
-/*
- * DDL keywords
- */
-CREATE : C R E A T E ;
-TABLE : T A B L E ;
-INDEX : I N D E X ;
-
-NULL : N U L L ;
-NOT_NULL : N O T WS+ N U L L ;
-
-COL_TYPE : T I N Y I N T
-         | S M A L L I N T
-         | I N T (E G E R)?
-         | B I G I N T
-         | D E C I M A L ( '(' WS* DIGIT+ ( WS* ',' WS* DIGIT+ WS* )? ')' )?
-         | N U M E R I C ( '(' WS* DIGIT+ ( WS* ',' WS* DIGIT+ WS* )? ')' )?
-         | F L O A T ( '(' WS* DIGIT+ WS* ')' )?
-         | R E A L
-         | D A T E
-         | T I M E
-         | D A T E T I M E
-         | T I M E S T A M P
-         | C H A R '(' WS* INT_LITERAL WS* ')'
-         | V A R C H A R '(' WS* INT_LITERAL WS* ')'
-         | T E X T
-         ;
-
-/*
  * Date and time constants
  * https://github.com/antlr/grammars-v4/blob/master/sqlite/SQLite.g4
  */
-CURRENT_DATE : C U R R E N T '_' D A T E ;
-CURRENT_TIME : C U R R E N T '_' T I M E ;
-CURRENT_TS : C U R R E N T '_' T I M E S T A M P ;
+KW_CURRENT_DATE : C U R R E N T UNDERSCORE D A T E ;
+KW_CURRENT_TIME : C U R R E N T UNDERSCORE T I M E ;
+KW_CURRENT_TS   : C U R R E N T UNDERSCORE T I M E S T A M P ;
 
-IDENTIFIER : LETTER (LETTER | UNDERSCORE | DIGIT)* ;
+/*
+ * Keywords
+ */
+KW_CONSTRAINT : CONSTRAINT ;
+KW_CREATE : CREATE ;
+KW_DEFAULT : DEFAULT ;
+KW_FK : FOREIGN WS+ KEY ;
+KW_INDEX : INDEX ;
+KW_NOT : NOT ;
+KW_NOT_NULL : NOT WS+ NULL ;
+KW_NULL : NULL ;
+KW_PK : PRIMARY WS+ KEY ;
+KW_REF : REFERENCES ;
+KW_TABLE : TABLE ;
+KW_UNIQUE : UNIQUE ;
+
+COL_TYPE : TINYINT
+         | SMALLINT
+         | INT
+         | BIGINT
+         | DECIMAL ( LEFT_BRACKET DIGIT+ ( COMMA DIGIT+ )? RIGHT_BRACKET )?
+         | NUMERIC ( LEFT_BRACKET DIGIT+ ( COMMA DIGIT+ )? RIGHT_BRACKET )?
+         | FLOAT   ( LEFT_BRACKET DIGIT+ RIGHT_BRACKET  )?
+         | REAL
+         | DATE
+         | TIME
+         | DATETIME
+         | TIMESTAMP
+         | CHAR LEFT_BRACKET WS* INT_LITERAL WS* RIGHT_BRACKET
+         | VARCHAR LEFT_BRACKET WS* INT_LITERAL WS* RIGHT_BRACKET
+         | TEXT
+         ;
+
+IDENTIFIER : LETTER ( LETTER | UNDERSCORE | DIGIT )* ;
+
+/*
+ * Whitespace
+ */
+WS : ( ' ' | '\t' | ( '\r'? '\n' | '\r' ) ) -> skip ;
