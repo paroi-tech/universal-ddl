@@ -5,12 +5,10 @@ const DdlExtractor = require("./DdlExtractor").default;
 
 const input = `
 create table person(
-  id int,
-  note float
-);
-create table category(
-  cat_id int,
-  title float
+  id int primary key,
+  name varchar(50) unique not null,
+  birthdate date default current_date,
+  note float(5)
 );
 `;
 const chars = new InputStream(input);
@@ -22,7 +20,7 @@ parser.buildParseTrees = true;
 
 const tree = parser.script();
 
-const extractor = new DdlExtractor();
+const extractor = new DdlExtractor(parser);
 ParseTreeWalker.DEFAULT.walk(extractor, tree);
 
 console.log(JSON.stringify(extractor.script, undefined, 2));
