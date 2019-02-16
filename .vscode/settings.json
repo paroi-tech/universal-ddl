@@ -1,0 +1,27 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  },
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 2,
+  "editor.wordWrapColumn": 132,
+  "editor.wordWrap": "wordWrapColumn",
+  "files.trimTrailingWhitespace": true,
+  "javascript.preferences.quoteStyle": "double",
+  "search.useIgnoreFiles": true,
+  "todohighlight.keywords": [
+    "TODO",
+    "FIXME"
+  ],
+  "tslint.autoFixOnSave": true,
+  "tslint.jsEnable": true,
+  "tslint.configFile": "tslint.json",
+  "typescript.preferences.quoteStyle": "double",
+  "typescript.locale": "en",
+  "workbench.editor.labelFormat": "short"
+}

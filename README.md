@@ -19,7 +19,7 @@ npm run build
 ## Run the demonstrations
 
 ```sh
-node tests/parse-ddl.js
+node dist/example.js
 ```
 
 ## Optional — Use the Java tool for testing

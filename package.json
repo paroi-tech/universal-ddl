@@ -3,11 +3,17 @@
   "private": true,
   "author": "Tomko Team",
   "scripts": {
-    "build": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o parser",
+    "antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o parser",
     "java-antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool UniversalDdl.g4 -o java-parser",
     "java-compile": "javac -cp \"antlr-4.7.2-complete.jar\" java-parser/UniversalDdl*.java",
     "java-build": "npm run java-antlr4 && npm run java-compile",
-    "java-test": "java -cp \"antlr-4.7.2-complete.jar:./java-parser\" org.antlr.v4.gui.TestRig UniversalDdl tableDef -tokens"
+    "java-test": "java -cp \"antlr-4.7.2-complete.jar:./java-parser\" org.antlr.v4.gui.TestRig UniversalDdl tableDef -tokens",
+    "clear": "rimraf 'dist/*' 'parser/*'",
+    "tsc": "tsc",
+    "tsc:watch": "tsc --watch",
+    "build": "npm run clear && npm run antlr4 && npm run tsc",
+    "lint": "tslint -p tsconfig.json -t verbose",
+    "test": "jest --watch"
   },
   "repository": {
     "type": "git",
@@ -15,5 +21,14 @@
   },
   "dependencies": {
     "antlr4": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^23.3.14",
+    "@types/node": "^10.12.26",
+    "jest": "^23.6.0",
+    "rimraf": "^2.6.3",
+    "ts-jest": "^23.10.5",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.3"
   }
 }

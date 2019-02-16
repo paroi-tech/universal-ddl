@@ -1,31 +1,28 @@
-const { inspect } = require("util");
-const { UniversalDdlListener } = require("../parser/UniversalDdlListener");
-const { ruleNameOf } = require("./antlr4-utils");
+const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
+import { ruleNameOf } from "./antlr4-utils"
 
-class DdlExtractor extends UniversalDdlListener {
+export default class DdlExtractor extends UniversalDdlListener {
   constructor(parser) {
     super()
     this.parser = parser
   }
 
   enterScript(ctx) {
-    console.log("enter script");
     this.script = {
       tables: []
     }
   }
 
   enterTableDef(ctx) {
-    console.log("enter tableDef:", ctx.IDENTIFIER().getText())
     this.currentTable = {
       name: ctx.IDENTIFIER().getText(),
       columns: []
-    };
+    }
     this.script.tables.push(this.currentTable)
   }
 
   enterColumnDef(ctx) {
-    const typeChildren = ctx.colType().children;
+    const typeChildren = ctx.colType().children
 
     this.currentColumn = {
       name: ctx.IDENTIFIER().getText(),
@@ -33,14 +30,14 @@ class DdlExtractor extends UniversalDdlListener {
     }
 
     if (typeChildren.length >= 4 && ruleNameOf(typeChildren[1]) === "LEFT_BRACKET") {
-      const maxIndex = typeChildren.length - 2;
-      const args = [];
+      const maxIndex = typeChildren.length - 2
+      const args: any[] = []
       for (let i = 2; i <= maxIndex; ++i) {
-        const arg = typeChildren[i];
+        const arg = typeChildren[i]
         if (ruleNameOf(arg) === "INT_VAL")
-          args.push(parseInt(arg.getText(), 10));
+          args.push(parseInt(arg.getText(), 10))
       }
-      this.currentColumn.typeArgs = args;
+      this.currentColumn.typeArgs = args
     }
   }
 
@@ -51,7 +48,7 @@ class DdlExtractor extends UniversalDdlListener {
   enterColDetails(ctx) {
     if (!ctx.children)
       return
-    for (let childCtx of ctx.children) {
+    for (const childCtx of ctx.children) {
       switch (ruleNameOf(childCtx)) {
         case "KW_PK":
           this.currentColumn.primaryKey = true
@@ -76,10 +73,4 @@ class DdlExtractor extends UniversalDdlListener {
       }
     }
   }
-
-  
 }
-
-module.exports = {
-  default: DdlExtractor
-};

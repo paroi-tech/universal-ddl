@@ -3,3 +3,4 @@ node_modules
 /antlr-*.jar
 /parser
 /java-parser
+/dist
