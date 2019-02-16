@@ -49,15 +49,10 @@ class DdlExtractor extends UniversalDdlListener {
   }
 
   enterColDetails(ctx) {
-    console.log("enter colDetails:", this.currentColumn.name)
     if (!ctx.children)
       return
-    let names = this.parser.symbolicNames
-    for (let child of ctx.children) {
-      let index = child.symbol ? child.symbol.type : -1
-      if (index === -1)
-        continue
-      switch (names[index]) {
+    for (let childCtx of ctx.children) {
+      switch (ruleNameOf(childCtx)) {
         case "KW_PK":
           this.currentColumn.primaryKey = true
           break
@@ -66,9 +61,23 @@ class DdlExtractor extends UniversalDdlListener {
           break
         case "KW_NOT_NULL":
           this.currentColumn.notNull = true
+          break
+        case "inlineForeignKeyDef":
+          this.currentColumn.foreignKey = true
+          this.currentColumn.foreignKeyArgs = childCtx.IDENTIFIER().map(id => id.getText())
+          break
+        case "defaultSpec":
+          this.currentColumn.default = {
+            value: childCtx.children[1].getText()
+          }
+          if (childCtx.defaultValueType)
+            this.currentColumn.default.type = "sql"
+          break
       }
     }
   }
+
+  
 }
 
 module.exports = {

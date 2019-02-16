@@ -12,7 +12,7 @@ pkConstraintDef : KW_CONSTRAINT KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET 
 fkConstraintDef : KW_CONSTRAINT KW_FK LEFT_BRACKET identifierList RIGHT_BRACKET
                   KW_REF IDENTIFIER ( LEFT_BRACKET identifierList RIGHT_BRACKET )? ;
 
-colForeignKeyDef : KW_FK KW_REF IDENTIFIER ( LEFT_BRACKET IDENTIFIER RIGHT_BRACKET )? ;
+inlineForeignKeyDef : KW_FK KW_REF IDENTIFIER ( LEFT_BRACKET IDENTIFIER RIGHT_BRACKET )? ;
 
 defaultSpec : KW_DEFAULT (
                 INT_VAL 
@@ -22,12 +22,12 @@ defaultSpec : KW_DEFAULT (
               | TIME_LITERAL
               | DATETIME_LITERAL
               | STRING_LITERAL
-              | KW_CURRENT_DATE
-              | KW_CURRENT_TIME
-              | KW_CURRENT_TS
+              | defaultValueType=KW_CURRENT_DATE
+              | defaultValueType=KW_CURRENT_TIME
+              | defaultValueType=KW_CURRENT_TS
               ) ;
 
-colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | colForeignKeyDef )+ ;
+colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
 columnDef : IDENTIFIER colType colDetails? ;
 columnDefList : columnDef ( COMMA columnDef )* ;
 tableDef : KW_CREATE KW_TABLE IDENTIFIER LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;

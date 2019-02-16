@@ -6,9 +6,9 @@ const DdlExtractor = require("./DdlExtractor").default;
 const input = `
 create table person(
   id int primary key,
-  name varchar(50) unique not null,
+  name varchar(50) unique not null default 'sam',
   birthdate date default current_date,
-  note float(5)
+  note float(5) foreign key references foo(bar)
 );
 `;
 const chars = new InputStream(input);
