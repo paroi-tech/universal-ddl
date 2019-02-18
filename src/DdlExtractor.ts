@@ -1,11 +1,11 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
+import { BasicAst } from "./basic-ast"
 
 export default class DdlExtractor extends UniversalDdlListener {
-  constructor(parser) {
-    super()
-    this.parser = parser
-  }
+  script: BasicAst | undefined
+  private currentTable: any
+  private currentColumn: any
 
   enterScript(ctx) {
     this.script = {
@@ -18,7 +18,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       name: ctx.IDENTIFIER().getText(),
       columns: []
     }
-    this.script.tables.push(this.currentTable)
+    this.script!.tables.push(this.currentTable)
   }
 
   enterColumnDef(ctx) {

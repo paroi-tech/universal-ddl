@@ -22,6 +22,5 @@
   "tslint.jsEnable": true,
   "tslint.configFile": "tslint.json",
   "typescript.preferences.quoteStyle": "double",
-  "typescript.locale": "en",
-  "workbench.editor.labelFormat": "short"
+  "typescript.locale": "en"
 }

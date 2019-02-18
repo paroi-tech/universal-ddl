@@ -1,20 +1,14 @@
 import { parseDdl } from "../src/parse-ddl"
 
 describe("test set 1", () => {
-  test("parse", () => {
+  test("must include at leat one column", () => {
     const input = `
-      create table person(
-        id int primary key,
-        name varchar(50) unique not null default 'sam',
-        birthdate date default current_date,
-        note float(5) foreign key references foo(bar)
-      );
+      create table empty();
       `
-    const ast = parseDdl(input)
-    // console.log(JSON.stringify(ast, undefined, 2))
+    expect(() => parseDdl(input)).toThrow()
   })
 
-  test("table_a", () => {
+  test("returns the correct AST", () => {
     const input = `
       create table table_a(
         col_a integer primary key

@@ -1,7 +1,7 @@
 {
   "name": "universal-ddl",
   "private": true,
-  "author": "Tomko Team",
+  "author": "tomko.team",
   "scripts": {
     "antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o parser",
     "java-antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool UniversalDdl.g4 -o java-parser",

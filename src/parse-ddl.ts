@@ -1,4 +1,4 @@
-const { InputStream, CommonTokenStream, tree: { ParseTreeWalker } } = require("antlr4")
+const { CommonTokenStream, InputStream, tree: { ParseTreeWalker } } = require("antlr4")
 const { UniversalDdlLexer } = require("../parser/UniversalDdlLexer")
 const { UniversalDdlParser } = require("../parser/UniversalDdlParser")
 import { BasicAst } from "./basic-ast"
@@ -11,12 +11,18 @@ export function parseDdl(ddl: string): BasicAst {
   const parser = new UniversalDdlParser(tokens)
 
   parser.buildParseTrees = true
+  parser.removeErrorListeners()
+  parser.addErrorListener({
+    syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
+      throw new Error(`Syntax error at line ${line}:${column}, ${msg}`)
+    }
+  })
 
   const tree = parser.script()
 
-  const extractor = new DdlExtractor(parser)
+  const extractor = new DdlExtractor()
   ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
-  return extractor.script
+  return extractor.script!
 }
 
