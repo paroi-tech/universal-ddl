@@ -15,7 +15,7 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   enterTableDef(ctx) {
     this.currentTable = {
-      name: ctx.IDENTIFIER().getText(),
+      name: ctx.tableName.IDENTIFIER().getText(),
       columns: []
     }
     this.script!.tables.push(this.currentTable)
@@ -25,7 +25,7 @@ export default class DdlExtractor extends UniversalDdlListener {
     const typeChildren = ctx.colType().children
 
     this.currentColumn = {
-      name: ctx.IDENTIFIER().getText(),
+      name: ctx.columnName.IDENTIFIER().getText(),
       type: typeChildren[0].getText(),
     }
 
@@ -60,8 +60,10 @@ export default class DdlExtractor extends UniversalDdlListener {
           this.currentColumn.notNull = true
           break
         case "inlineForeignKeyDef":
-          this.currentColumn.foreignKey = true
-          this.currentColumn.foreignKeyArgs = childCtx.IDENTIFIER().map(id => id.getText())
+          this.currentColumn.references = {
+            table: childCtx.refTable.IDENTIFIER().getText(),
+            column: childCtx.refColumn.IDENTIFIER().getText(),
+          }
           break
         case "defaultSpec":
           this.currentColumn.default = {

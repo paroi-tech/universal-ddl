@@ -5,18 +5,19 @@ grammar UniversalDdl ;
  */
 script : tableDef+ EOF ;
 
-identifierList : IDENTIFIER ( COMMA IDENTIFIER )* ;
+id : IDENTIFIER ;
+identifierList : id ( COMMA id )* ;
 
 uniqueConstraintDef : KW_CONSTRAINT KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
 pkConstraintDef : KW_CONSTRAINT KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
 fkConstraintDef : KW_CONSTRAINT KW_FK LEFT_BRACKET identifierList RIGHT_BRACKET
-                  KW_REF IDENTIFIER ( LEFT_BRACKET identifierList RIGHT_BRACKET )? ;
+                  KW_REF id ( LEFT_BRACKET identifierList RIGHT_BRACKET )? ;
 
-inlineForeignKeyDef : KW_FK KW_REF IDENTIFIER ( LEFT_BRACKET IDENTIFIER RIGHT_BRACKET )? ;
+inlineForeignKeyDef : KW_FK KW_REF refTable=id ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? ;
 
 defaultSpec : KW_DEFAULT (
-                INT_VAL 
-              | INT_LITERAL 
+                INT_VAL
+              | INT_LITERAL
               | FLOAT_LITERAL
               | DATE_LITERAL
               | TIME_LITERAL
@@ -28,9 +29,9 @@ defaultSpec : KW_DEFAULT (
               ) ;
 
 colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
-columnDef : IDENTIFIER colType colDetails? ;
+columnDef : columnName=id colType colDetails? ;
 columnDefList : columnDef ( COMMA columnDef )* ;
-tableDef : KW_CREATE KW_TABLE IDENTIFIER LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;
+tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;
 
 colType : SIMPLE_COL_TYPE
          | DECIMAL ( LEFT_BRACKET INT_VAL ( COMMA INT_VAL )? RIGHT_BRACKET )?
