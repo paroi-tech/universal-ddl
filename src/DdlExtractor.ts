@@ -1,6 +1,7 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
 import { BasicAst } from "./basic-ast"
+import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
   script: BasicAst | undefined
@@ -15,17 +16,17 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   enterTableDef(ctx) {
     this.currentTable = {
-      name: ctx.tableName.IDENTIFIER().getText(),
+      name: getIdentifierText(ctx.tableName),
       columns: []
     }
     this.script!.tables.push(this.currentTable)
   }
 
   enterColumnDef(ctx) {
-    const typeChildren = ctx.colType().children
+    const typeChildren = ctx.columnType().children
 
     this.currentColumn = {
-      name: ctx.columnName.IDENTIFIER().getText(),
+      name: getIdentifierText(ctx.columnName),
       type: typeChildren[0].getText(),
     }
 
@@ -34,7 +35,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       const args: any[] = []
       for (let i = 2; i <= maxIndex; ++i) {
         const arg = typeChildren[i]
-        if (ruleNameOf(arg) === "INT_VAL")
+        if (ruleNameOf(arg) === "UINT_LITERAL")
           args.push(parseInt(arg.getText(), 10))
       }
       this.currentColumn.typeArgs = args
@@ -61,8 +62,8 @@ export default class DdlExtractor extends UniversalDdlListener {
           break
         case "inlineForeignKeyDef":
           this.currentColumn.references = {
-            table: childCtx.refTable.IDENTIFIER().getText(),
-            column: childCtx.refColumn.IDENTIFIER().getText(),
+            table: getIdentifierText(childCtx.refTable),
+            column: getIdentifierText(childCtx.refColumn),
           }
           break
         case "defaultSpec":
@@ -74,5 +75,55 @@ export default class DdlExtractor extends UniversalDdlListener {
           break
       }
     }
+  }
+
+  enterUniqueConstraint(ctx) {
+    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
+      if (!this.currentTable.uniqueConstraints)
+        this.currentTable.uniqueConstraints = []
+      this.currentTable.uniqueConstraints.push(
+        this.buildUniqueConstraint(ctx.uniqueConstraintDef())
+      )
+    }
+  }
+
+  enterPrimaryKeyConstraint(ctx) {
+    if (ruleNameOf(ctx.parentCtx) === "tableItemList")
+      this.currentTable.primaryKey = this.buildPrimaryKeyConstraint(ctx.pkConstraintDef())
+  }
+
+  enterForeignKeyConstraint(ctx) {
+    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
+      if (!this.currentTable.fkConstraints)
+        this.currentTable.fkConstraints = []
+      this.currentTable.fkConstraints.push(
+        this.buildForeignKeyConstraint(ctx.fkConstraintDef())
+      )
+    }
+  }
+
+  buildUniqueConstraint(ctx) {
+    return {
+      name: getIdentifierText(ctx.constraintName) || "",
+      columns: getIdListItemTexts(ctx.identifierList())
+    }
+  }
+
+  buildPrimaryKeyConstraint(ctx) {
+    return {
+      name: getIdentifierText(ctx.constraintName) || "",
+      columns: getIdListItemTexts(ctx.identifierList())
+    }
+  }
+
+  buildForeignKeyConstraint(ctx) {
+    const constraint: any = {
+      name: getIdentifierText(ctx.constraintName) || "",
+      columns: getIdListItemTexts(ctx.columns),
+      refTable: getIdentifierText(ctx.refTable)
+    }
+    if (ctx.refColumns)
+      constraint.refColumns = getIdListItemTexts(ctx.refColumns)
+    return constraint
   }
 }

@@ -5,7 +5,9 @@ create table person(
   id int primary key,
   name varchar(50) unique not null default 'sam',
   birthdate date default current_date,
-  note float(5) foreign key references foo(bar)
+  note float(5) foreign key references foo(bar),
+  constraint u_birthdate unique(birthdate),
+  constraint fk foreign key(name, note) references foo(bar, baz)
 );
 `
 const ast = parseDdl(input)

@@ -6,17 +6,22 @@ grammar UniversalDdl ;
 script : tableDef+ EOF ;
 
 id : IDENTIFIER ;
-identifierList : id ( COMMA id )* ;
+identifierList : items+=id ( COMMA items+=id )* ;
 
-uniqueConstraintDef : KW_CONSTRAINT KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
-pkConstraintDef : KW_CONSTRAINT KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
-fkConstraintDef : KW_CONSTRAINT KW_FK LEFT_BRACKET identifierList RIGHT_BRACKET
-                  KW_REF id ( LEFT_BRACKET identifierList RIGHT_BRACKET )? ;
+uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+pkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+fkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
+                  KW_REF refTable=id ( LEFT_BRACKET refColumns=identifierList RIGHT_BRACKET )? ;
+
+constraintDef : uniqueConstraintDef # UniqueConstraint
+              | pkConstraintDef     # PrimaryKeyConstraint
+              | fkConstraintDef     # ForeignKeyConstraint
+              ;
 
 inlineForeignKeyDef : KW_FK KW_REF refTable=id ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? ;
 
 defaultSpec : KW_DEFAULT (
-                INT_VAL
+                UINT_LITERAL
               | INT_LITERAL
               | FLOAT_LITERAL
               | DATE_LITERAL
@@ -28,17 +33,20 @@ defaultSpec : KW_DEFAULT (
               | defaultValueType=KW_CURRENT_TS
               ) ;
 
-colDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
-columnDef : columnName=id colType colDetails? ;
-columnDefList : columnDef ( COMMA columnDef )* ;
-tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET columnDefList RIGHT_BRACKET SEMICOLON ;
+columnDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
 
-colType : SIMPLE_COL_TYPE
-         | DECIMAL ( LEFT_BRACKET INT_VAL ( COMMA INT_VAL )? RIGHT_BRACKET )?
-         | NUMERIC ( LEFT_BRACKET INT_VAL ( COMMA INT_VAL )? RIGHT_BRACKET )?
-         | FLOAT   ( LEFT_BRACKET INT_VAL RIGHT_BRACKET  )?
-         | CHAR LEFT_BRACKET WS* INT_VAL WS* RIGHT_BRACKET
-         | VARCHAR LEFT_BRACKET WS* INT_VAL WS* RIGHT_BRACKET
+columnDef : columnName=id columnType columnDetails? ;
+
+tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
+
+tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON ;
+
+columnType : SIMPLE_COLUMN_TYPE
+         | DECIMAL ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
+         | NUMERIC ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
+         | FLOAT   ( LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET  )?
+         | CHAR LEFT_BRACKET WS* UINT_LITERAL WS* RIGHT_BRACKET
+         | VARCHAR LEFT_BRACKET WS* UINT_LITERAL WS* RIGHT_BRACKET
          ;
 
 /**
@@ -102,7 +110,7 @@ FLOAT : F L O A T ;
 CHAR : C H A R ;
 VARCHAR : V A R C H A R ;
 
-SIMPLE_COL_TYPE : TINYINT
+SIMPLE_COLUMN_TYPE : TINYINT
          | SMALLINT
          | INT
          | BIGINT
@@ -147,8 +155,8 @@ SEMICOLON : ';' ;
  */
 BIT_LITERAL : '0' | '1' ;
 
-INT_VAL : DIGIT+ ;
-INT_LITERAL : ( '+' | '-' ) DIGIT+ ;
+UINT_LITERAL : DIGIT+ ;
+INT_LITERAL  : ( '+' | '-' ) DIGIT+ ;
 
 FLOAT_LITERAL : ( '+' | '-' )? DIGIT+ '.' DIGIT+
               | ( '+' | '-' )? DIGIT+ E DIGIT+ ;
