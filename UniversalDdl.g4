@@ -6,22 +6,29 @@ grammar UniversalDdl ;
 script : tableDef+ EOF ;
 
 id : IDENTIFIER ;
+
 identifierList : id ( COMMA id )* ;
 
-uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
-pkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+uniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+
+inlineUniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE ;
+
+primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+
+inlinePrimaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
 
 onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
-fkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
-                  KW_REF refTable=id ( LEFT_BRACKET refColumns=identifierList RIGHT_BRACKET )? ;
 
-constraintDef : uniqueConstraintDef # UniqueConstraint
-              | pkConstraintDef     # PrimaryKeyConstraint
-              | fkConstraintDef     # ForeignKeyConstraint
+foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
+                          KW_REF refTable=id ( LEFT_BRACKET refColumns=identifierList RIGHT_BRACKET )? onDelete=onDeleteAction? ;
+
+inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? ( KW_FK )? KW_REF refTable=id
+                                ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? ;
+
+constraintDef : uniqueConstraintDef     # FullUniqueConstraintDef
+              | primaryKeyConstraintDef # FullPrimaryKeyConstraintDef
+              | foreignKeyConstraintDef # FullForeignKeyConstraintDef
               ;
-
-inlineForeignKeyDef : ( KW_CONSTRAINT name=id )? ( KW_FK )? KW_REF refTable=id
-                      ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? onDelete=onDeleteAction? ;
 
 columnType : BIGINT
            | DATE
@@ -53,7 +60,15 @@ defaultSpec : KW_DEFAULT (
               | KW_CURRENT_TS
               ) ;
 
-columnDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
+columnDetails : (
+                  KW_NULL
+                | KW_NOT_NULL
+                | inlinePrimaryKeyConstraintDef
+                | inlineUniqueConstraintDef
+                | defaultSpec
+                | inlineForeignKeyConstraintDef
+                )+
+                ;
 
 columnDef : columnName=id columnType columnDetails? ;
 

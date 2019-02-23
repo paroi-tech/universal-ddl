@@ -19,5 +19,9 @@
   "tslint.configFile": "tslint.json",
   "tslint.jsEnable": true,
   "typescript.locale": "en",
-  "typescript.preferences.quoteStyle": "double"
+  "typescript.preferences.quoteStyle": "double",
+  "[antlr]": {
+    "editor.formatOnSave": false
+  },
+  "editor.formatOnSave": true
 }

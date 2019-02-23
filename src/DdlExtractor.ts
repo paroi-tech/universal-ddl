@@ -1,7 +1,7 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
-import { ruleNameOf } from "./antlr4-utils";
-import { BasicAst } from "./basic-ast";
-import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils";
+import { ruleNameOf } from "./antlr4-utils"
+import { BasicAst } from "./basic-ast"
+import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
   script: BasicAst | undefined
@@ -10,16 +10,21 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   enterScript(ctx) {
     this.script = {
-      tables: []
+      orders: []
     }
   }
 
   enterTableDef(ctx) {
     this.currentTable = {
+      orderType: "createTable",
       name: getIdentifierText(ctx.tableName),
       columns: []
     }
-    this.script!.tables.push(this.currentTable)
+    this.script!.orders.push(this.currentTable)
+  }
+
+  exitTableDef() {
+    this.currentTable = undefined
   }
 
   enterColumnDef(ctx) {
@@ -41,6 +46,7 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   exitColumnDef(ctx) {
     this.currentTable.columns.push(this.currentColumn)
+    this.currentColumn = undefined
   }
 
   enterColumnDetails(ctx) {
@@ -48,23 +54,31 @@ export default class DdlExtractor extends UniversalDdlListener {
       return
     for (const childCtx of ctx.children) {
       switch (ruleNameOf(childCtx)) {
-        case "KW_PK":
-          this.currentColumn.primaryKey = true
-          break
-        case "KW_UNIQUE":
-          this.currentColumn.unique = true
-          break
         case "KW_NOT_NULL":
           this.currentColumn.notNull = true
           break
-        case "inlineForeignKeyDef":
-          const fkConstraint: any = {
-            table: getIdentifierText(childCtx.refTable),
-            column: getIdentifierText(childCtx.refColumn),
+        case "inlinePrimaryKeyConstraintDef":
+          this.currentColumn.primaryKey = true
+          if (childCtx.constraintName)
+            this.currentColumn.primaryKeyContraintName = getIdentifierText(childCtx.constraintName)
+          break
+        case "inlineUniqueConstraintDef":
+          this.currentColumn.unique = true
+          if (childCtx.constraintName) {
+            this.currentColumn.uniqueConstraint = {
+              name: getIdentifierText(childCtx.constraintName)
+            }
           }
-          if (childCtx.name)
-           fkConstraint.name = getIdentifierText(childCtx.name)
-          this.currentColumn.fkConstraint = fkConstraint
+          break
+        case "inlineForeignKeyConstraintDef":
+          const fkConstraint: any = {
+            refTable: getIdentifierText(childCtx.refTable)
+          }
+          if (childCtx.refColumn)
+            fkConstraint.refColumn = getIdentifierText(childCtx.refColumn)
+          if (childCtx.constraintName)
+            fkConstraint.name = getIdentifierText(childCtx.constraintName)
+          this.currentColumn.foreignKeyConstraint = fkConstraint
           break
         case "defaultSpec":
           this.currentColumn.default = this.buildDefaultValue(childCtx.children[1])
@@ -105,55 +119,60 @@ export default class DdlExtractor extends UniversalDdlListener {
     return obj
   }
 
-  enterUniqueConstraint(ctx) {
+  enterFullUniqueConstraintDef(ctx) {
     if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
       if (!this.currentTable.uniqueConstraints)
         this.currentTable.uniqueConstraints = []
       this.currentTable.uniqueConstraints.push(
-        this.buildUniqueConstraint(ctx.uniqueConstraintDef())
+        this.buildFullUniqueConstraint(ctx.uniqueConstraintDef())
       )
     }
   }
 
-  enterPrimaryKeyConstraint(ctx) {
+  enterFullPrimaryKeyConstraintDef(ctx) {
     if (ruleNameOf(ctx.parentCtx) === "tableItemList")
-      this.currentTable.primaryKey = this.buildPrimaryKeyConstraint(ctx.pkConstraintDef())
+      this.currentTable.primaryKey = this.buildFullPrimaryKeyConstraint(
+        ctx.primaryKeyConstraintDef()
+      )
   }
 
-  enterForeignKeyConstraint(ctx) {
+  enterFullForeignKeyConstraintDef(ctx) {
     if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      if (!this.currentTable.fkConstraints)
-        this.currentTable.fkConstraints = []
-      this.currentTable.fkConstraints.push(
-        this.buildForeignKeyConstraint(ctx.fkConstraintDef())
+      if (!this.currentTable.foreignKeyConstraints)
+        this.currentTable.foreignKeyConstraints = []
+      this.currentTable.foreignKeyConstraints.push(
+        this.buildFullForeignKeyConstraint(ctx.foreignKeyConstraintDef())
       )
     }
   }
 
-  buildUniqueConstraint(ctx) {
-    return {
-      name: getIdentifierText(ctx.constraintName) || "",
-      columns: getIdListItemTexts(ctx.identifierList())
-    }
-  }
-
-  buildPrimaryKeyConstraint(ctx) {
-    return {
-      name: getIdentifierText(ctx.constraintName) || "",
-      columns: getIdListItemTexts(ctx.identifierList())
-    }
-  }
-
-  buildForeignKeyConstraint(ctx) {
+  buildFullUniqueConstraint(ctx) {
     const constraint: any = {
-      name: getIdentifierText(ctx.constraintName) || "",
+      columns: getIdListItemTexts(ctx.identifierList())
+    }
+    if (ctx.constraintName)
+      constraint.name = getIdentifierText(ctx.constraintName)
+    return constraint
+  }
+
+  buildFullPrimaryKeyConstraint(ctx) {
+    const constraint: any = {
+      columns: getIdListItemTexts(ctx.identifierList())
+    }
+    if (ctx.constraintName)
+      constraint.name = getIdentifierText(ctx.constraintName)
+    return constraint
+  }
+
+  buildFullForeignKeyConstraint(ctx) {
+    const constraint: any = {
       columns: getIdListItemTexts(ctx.columns),
-      references: {
-        table: getIdentifierText(ctx.refTable)
-      }
+      refTable: getIdentifierText(ctx.refTable)
     }
     if (ctx.refColumns)
-      constraint.references.columns = getIdListItemTexts(ctx.refColumns)
+      constraint.refColumns = getIdListItemTexts(ctx.refColumns)
+    if (ctx.constraintName)
+      constraint.name = getIdentifierText(ctx.constraintName)
     return constraint
   }
 }

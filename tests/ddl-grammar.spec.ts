@@ -1,4 +1,4 @@
-import { parseDdl } from "../src/parse-ddl";
+import { parseDdl } from "../src/parse-ddl"
 
 describe("DDL Grammar", () => {
   test("a table must include at least one column", () => {
@@ -30,7 +30,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables.map(table => table.name)).toEqual(["t1", "t2", "t3"])
+    expect(ast.orders.map(order => order.name)).toEqual(["t1", "t2", "t3"])
   })
 
   test("default sql value", () => {
@@ -40,7 +40,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].default).toEqual({
+    expect(ast.orders[0].columns[0].default).toEqual({
       "type": "sql",
       "value": "current_timestamp"
     })
@@ -53,7 +53,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].default).toEqual({
+    expect(ast.orders[0].columns[0].default).toEqual({
       "type": "string",
       "value": "John ' Wick"
     })
@@ -66,7 +66,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].default).toEqual({
+    expect(ast.orders[0].columns[0].default).toEqual({
       "type": "int",
       "value": 123
     })
@@ -79,7 +79,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].default).toEqual({
+    expect(ast.orders[0].columns[0].default).toEqual({
       "type": "float",
       "value": 12.35
     })
@@ -92,9 +92,9 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].fkConstraint).toEqual({
-      "table": "other_table",
-      "column": "b"
+    expect(ast.orders[0].columns[0].foreignKeyConstraint).toEqual({
+      "refTable": "other_table",
+      "refColumn": "b"
     })
   })
 
@@ -105,10 +105,10 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].fkConstraint).toEqual({
+    expect(ast.orders[0].columns[0].foreignKeyConstraint).toEqual({
       "name": "fk1",
-      "table": "other_table",
-      "column": "b"
+      "refTable": "other_table",
+      "refColumn": "b"
     })
   })
 
@@ -121,7 +121,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].fkConstraints[0]).toEqual({
+    expect(ast.orders[0].foreignKeyConstraints[0]).toEqual({
       "columns": ["a", "b"],
       "refTable": "other_table",
       "refColumns": ["c", "d"]
@@ -137,7 +137,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].fkConstraints[0]).toEqual({
+    expect(ast.orders[0].foreignKeyConstraints[0]).toEqual({
       "name": "fk1",
       "columns": ["a", "b"],
       "refTable": "other_table",
@@ -152,7 +152,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].uniqueConstraint).toEqual(true)
+    expect(ast.orders[0].columns[0].unique).toEqual(true)
   })
 
   test("named inline constraint: unique", () => {
@@ -162,7 +162,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].columns[0].uniqueConstraint).toEqual({
+    expect(ast.orders[0].columns[0].uniqueConstraint).toEqual({
       "name": "u1"
     })
   })
@@ -176,7 +176,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].uniqueConstraints[0]).toEqual({
+    expect(ast.orders[0].uniqueConstraints[0]).toEqual({
       "columns": ["a", "b"]
     })
   })
@@ -190,7 +190,7 @@ describe("DDL Grammar", () => {
       );
       `
     const ast = parseDdl(input)
-    expect(ast.tables[0].fkConstraints[0]).toEqual({
+    expect(ast.orders[0].uniqueConstraints[0]).toEqual({
       "name": "u1",
       "columns": ["a", "b"]
     })

@@ -1,3 +1,3 @@
 export interface BasicAst {
-  tables: any[]
+  orders: any[]
 }
