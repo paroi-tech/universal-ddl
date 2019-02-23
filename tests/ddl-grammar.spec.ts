@@ -1,4 +1,4 @@
-import { parseDdl } from "../src/parse-ddl"
+import { parseDdl } from "../src/parse-ddl";
 
 describe("DDL Grammar", () => {
   test("a table must include at least one column", () => {
@@ -93,8 +93,8 @@ describe("DDL Grammar", () => {
       `
     const ast = parseDdl(input)
     expect(ast.tables[0].columns[0].fkConstraint).toEqual({
-      "refTable": "other_table",
-      "refColumn": "b"
+      "table": "other_table",
+      "column": "b"
     })
   })
 

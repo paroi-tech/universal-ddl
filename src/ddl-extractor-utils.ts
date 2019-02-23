@@ -3,9 +3,8 @@ export function getIdentifierText(idCtx) {
 }
 
 export function getIdListItemTexts(idListCtx) {
-  // return idListCtx.items.map(item =>  item.getText())
   const list: any[] = []
-  for (const idCtx of idListCtx.items) {
+  for (const idCtx of idListCtx.id()) {
     const text = getIdentifierText(idCtx)
     list.push(text)
   }

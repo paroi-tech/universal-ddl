@@ -1,7 +1,7 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
-import { ruleNameOf } from "./antlr4-utils"
-import { BasicAst } from "./basic-ast"
-import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
+import { ruleNameOf } from "./antlr4-utils";
+import { BasicAst } from "./basic-ast";
+import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils";
 
 export default class DdlExtractor extends UniversalDdlListener {
   script: BasicAst | undefined
@@ -23,21 +23,18 @@ export default class DdlExtractor extends UniversalDdlListener {
   }
 
   enterColumnDef(ctx) {
-    const typeChildren = ctx.columnType().children
+    const typeCtx = ctx.columnType()
 
     this.currentColumn = {
       name: getIdentifierText(ctx.columnName),
-      type: typeChildren[0].getText(),
+      type: typeCtx.children[0].getText(),
     }
 
-    if (typeChildren.length >= 4 && ruleNameOf(typeChildren[1]) === "LEFT_BRACKET") {
-      const maxIndex = typeChildren.length - 2
+    if (typeCtx.children.length > 1 && "UINT_LITERAL" in typeCtx) {
+      const params = typeCtx.UINT_LITERAL()
       const args: any[] = []
-      for (let i = 2; i <= maxIndex; ++i) {
-        const arg = typeChildren[i]
-        if (ruleNameOf(arg) === "UINT_LITERAL")
-          args.push(parseInt(arg.getText(), 10))
-      }
+      for (const intLiteral of params)
+        args.push(parseInt(intLiteral.getText(), 10))
       this.currentColumn.typeArgs = args
     }
   }
@@ -46,7 +43,7 @@ export default class DdlExtractor extends UniversalDdlListener {
     this.currentTable.columns.push(this.currentColumn)
   }
 
-  enterColDetails(ctx) {
+  enterColumnDetails(ctx) {
     if (!ctx.children)
       return
     for (const childCtx of ctx.children) {
@@ -61,7 +58,7 @@ export default class DdlExtractor extends UniversalDdlListener {
           this.currentColumn.notNull = true
           break
         case "inlineForeignKeyDef":
-          this.currentColumn.references = {
+          this.currentColumn.fkConstraint = {
             table: getIdentifierText(childCtx.refTable),
             column: getIdentifierText(childCtx.refColumn),
           }
@@ -120,10 +117,12 @@ export default class DdlExtractor extends UniversalDdlListener {
     const constraint: any = {
       name: getIdentifierText(ctx.constraintName) || "",
       columns: getIdListItemTexts(ctx.columns),
-      refTable: getIdentifierText(ctx.refTable)
+      references: {
+        table: getIdentifierText(ctx.refTable)
+      }
     }
     if (ctx.refColumns)
-      constraint.refColumns = getIdListItemTexts(ctx.refColumns)
+      constraint.references.columns = getIdListItemTexts(ctx.refColumns)
     return constraint
   }
 }

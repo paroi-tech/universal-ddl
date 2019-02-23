@@ -22,6 +22,13 @@ npm run build
 node dist/example.js
 ```
 
+## Contribute
+
+With VS Code, our recommanded plugins are:
+
+- **TODO Highlight** from Wayou Liu (`wayou.vscode-todo-highlight`)
+- **TSLint** from Microsoft (`ms-vscode.vscode-typescript-tslint-plugin`)
+
 ## Optional — Use the Java tool for testing
 
 Notices:

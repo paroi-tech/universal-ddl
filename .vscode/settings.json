@@ -1,9 +1,8 @@
 {
   "editor.codeActionsOnSave": {
-    "source.organizeImports": true
+    "source.organizeImports": false
   },
   "editor.insertSpaces": true,
-  "editor.formatOnSave": true,
   "editor.rulers": [
     120
   ],
@@ -17,7 +16,6 @@
     "TODO",
     "FIXME"
   ],
-  "tslint.autoFixOnSave": true,
   "tslint.configFile": "tslint.json",
   "tslint.jsEnable": true,
   "typescript.locale": "en",

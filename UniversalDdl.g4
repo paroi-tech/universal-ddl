@@ -6,10 +6,12 @@ grammar UniversalDdl ;
 script : tableDef+ EOF ;
 
 id : IDENTIFIER ;
-identifierList : items+=id ( COMMA items+=id )* ;
+identifierList : id ( COMMA id )* ;
 
-uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )?KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
 pkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+
+onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
 fkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
                   KW_REF refTable=id ( LEFT_BRACKET refColumns=identifierList RIGHT_BRACKET )? ;
 
@@ -18,8 +20,9 @@ constraintDef : uniqueConstraintDef # UniqueConstraint
               | fkConstraintDef     # ForeignKeyConstraint
               ;
 
-inlineForeignKeyDef : KW_FK KW_REF refTable=id ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? ;
+inlineForeignKeyDef : ( KW_FK )? KW_REF refTable=id ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? onDelete=onDeleteAction? ;
 
+sqlConstant : KW_CURRENT_DATE | KW_CURRENT_TIME | KW_CURRENT_TS ;
 defaultSpec : KW_DEFAULT (
                 UINT_LITERAL
               | INT_LITERAL
@@ -28,9 +31,7 @@ defaultSpec : KW_DEFAULT (
               | TIME_LITERAL
               | DATETIME_LITERAL
               | STRING_LITERAL
-              | defaultValueType=KW_CURRENT_DATE
-              | defaultValueType=KW_CURRENT_TIME
-              | defaultValueType=KW_CURRENT_TS
+              | sqlConstant
               ) ;
 
 columnDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
@@ -41,13 +42,22 @@ tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
 
 tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON ;
 
-columnType : SIMPLE_COLUMN_TYPE
-         | DECIMAL ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
-         | NUMERIC ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
-         | FLOAT   ( LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET  )?
-         | CHAR LEFT_BRACKET WS* UINT_LITERAL WS* RIGHT_BRACKET
-         | VARCHAR LEFT_BRACKET WS* UINT_LITERAL WS* RIGHT_BRACKET
-         ;
+columnType : BIGINT
+           | DATE
+           | DATETIME
+           | INT
+           | REAL
+           | SMALLINT
+           | TEXT
+           | TIME
+           | TIMESTAMP
+           | TINYINT
+           | CHAR LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET
+           | DECIMAL ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
+           | FLOAT ( LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET )?
+           | NUMERIC ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
+           | VARCHAR LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET
+           ;
 
 /**
  * Lexer rules
@@ -91,57 +101,48 @@ fragment LETTER : [a-zA-Z] ;
 fragment UNDERSCORE : '_' ;
 
 /*
- * SQL types defined as fragments
+ * SQL types
  */
-fragment TINYINT : T I N Y I N T ;
-fragment SMALLINT : S M A L L I N T ;
-fragment INT : I N T (E G E R)? ;
-fragment BIGINT : B I G I N T ;
-fragment REAL : R E A L ;
-fragment DATE : D A T E ;
-fragment TIME : T I M E ;
-fragment DATETIME : D A T E T I M E ;
-fragment TIMESTAMP : T I M E S T A M P ;
-fragment TEXT : T E X T ;
-
-DECIMAL : D E C I M A L ;
-NUMERIC : N U M E R I C ;
-FLOAT : F L O A T ;
+BIGINT : B I G I N T ;
 CHAR : C H A R ;
+DATE : D A T E ;
+DATETIME : D A T E T I M E ;
+DECIMAL : D E C I M A L ;
+FLOAT : F L O A T ;
+INT : I N T (E G E R)? ;
+NUMERIC : N U M E R I C ;
+REAL : R E A L ;
+SMALLINT : S M A L L I N T ;
+TEXT : T E X T ;
+TIME : T I M E ;
+TIMESTAMP : T I M E S T A M P ;
+TINYINT : T I N Y I N T ;
 VARCHAR : V A R C H A R ;
-
-SIMPLE_COLUMN_TYPE : TINYINT
-         | SMALLINT
-         | INT
-         | BIGINT
-         | REAL
-         | DATE
-         | TIME
-         | DATETIME
-         | TIMESTAMP
-         | TEXT
-         ;
 
 /*
  * Keywords as fragments
  */
+fragment CASCADE : C A S C A D E ;
 fragment CONSTRAINT : C O N S T R A I N T ;
 fragment CREATE : C R E A T E ;
 fragment DEFAULT : D E F A U L T ;
+fragment DELETE : D E L E T E ;
 fragment FOREIGN : F O R E I G N ;
 fragment INDEX : I N D E X ;
 fragment KEY : K E Y ;
 fragment NOT : N O T ;
 fragment NULL : N U L L ;
+fragment ON : O N ;
 fragment PRIMARY : P R I M A R Y ;
 fragment REFERENCES : R E F E R E N C E S ;
+fragment RESTRICT : R E S T R I C T ;
 fragment TABLE : T A B L E ;
 fragment UNIQUE : U N I Q U E ;
 
 /*
  * Brackets
  */
-LEFT_BRACKET  : '(' ;
+LEFT_BRACKET : '(' ;
 RIGHT_BRACKET : ')' ;
 
 /*
@@ -156,7 +157,7 @@ SEMICOLON : ';' ;
 BIT_LITERAL : '0' | '1' ;
 
 UINT_LITERAL : DIGIT+ ;
-INT_LITERAL  : ( '+' | '-' ) DIGIT+ ;
+INT_LITERAL : ( '+' | '-' ) DIGIT+ ;
 
 FLOAT_LITERAL : ( '+' | '-' )? DIGIT+ '.' DIGIT+
               | ( '+' | '-' )? DIGIT+ E DIGIT+ ;
@@ -175,21 +176,25 @@ STRING_LITERAL : '\'' ( ~'\'' | '\'\'' )* '\'' ;
  */
 KW_CURRENT_DATE : C U R R E N T UNDERSCORE D A T E ;
 KW_CURRENT_TIME : C U R R E N T UNDERSCORE T I M E ;
-KW_CURRENT_TS   : C U R R E N T UNDERSCORE T I M E S T A M P ;
+KW_CURRENT_TS : C U R R E N T UNDERSCORE T I M E S T A M P ;
 
 /*
  * Keywords
  */
+KW_CASCADE : CASCADE ;
 KW_CONSTRAINT : CONSTRAINT ;
 KW_CREATE : CREATE ;
 KW_DEFAULT : DEFAULT ;
+KW_DELETE : DELETE ;
 KW_FK : FOREIGN WS+ KEY ;
 KW_INDEX : INDEX ;
 KW_NOT : NOT ;
 KW_NOT_NULL : NOT WS+ NULL ;
 KW_NULL : NULL ;
+KW_ON : ON ;
 KW_PK : PRIMARY WS+ KEY ;
 KW_REF : REFERENCES ;
+KW_RESTRICT : RESTRICT ;
 KW_TABLE : TABLE ;
 KW_UNIQUE : UNIQUE ;
 
