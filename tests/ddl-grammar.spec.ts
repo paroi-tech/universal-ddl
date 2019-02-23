@@ -93,8 +93,8 @@ describe("DDL Grammar", () => {
       `
     const ast = parseDdl(input)
     expect(ast.tables[0].columns[0].fkConstraint).toEqual({
-      "referencedTable": "other_table",
-      "referencedColumn": "b"
+      "refTable": "other_table",
+      "refColumn": "b"
     })
   })
 
@@ -107,8 +107,8 @@ describe("DDL Grammar", () => {
     const ast = parseDdl(input)
     expect(ast.tables[0].columns[0].fkConstraint).toEqual({
       "name": "fk1",
-      "referencedTable": "other_table",
-      "referencedColumn": "b"
+      "refTable": "other_table",
+      "refColumn": "b"
     })
   })
 
@@ -123,8 +123,8 @@ describe("DDL Grammar", () => {
     const ast = parseDdl(input)
     expect(ast.tables[0].fkConstraints[0]).toEqual({
       "columns": ["a", "b"],
-      "referencedTable": "other_table",
-      "referencedColumns": ["c", "d"]
+      "refTable": "other_table",
+      "refColumns": ["c", "d"]
     })
   })
 
@@ -140,8 +140,8 @@ describe("DDL Grammar", () => {
     expect(ast.tables[0].fkConstraints[0]).toEqual({
       "name": "fk1",
       "columns": ["a", "b"],
-      "referencedTable": "other_table",
-      "referencedColumns": ["c", "d"]
+      "refTable": "other_table",
+      "refColumns": ["c", "d"]
     })
   })
 
