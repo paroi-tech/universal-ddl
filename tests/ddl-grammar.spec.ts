@@ -107,8 +107,8 @@ describe("DDL Grammar", () => {
     const ast = parseDdl(input)
     expect(ast.tables[0].columns[0].fkConstraint).toEqual({
       "name": "fk1",
-      "refTable": "other_table",
-      "refColumn": "b"
+      "table": "other_table",
+      "column": "b"
     })
   })
 

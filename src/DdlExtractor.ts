@@ -58,20 +58,51 @@ export default class DdlExtractor extends UniversalDdlListener {
           this.currentColumn.notNull = true
           break
         case "inlineForeignKeyDef":
-          this.currentColumn.fkConstraint = {
+          const fkConstraint: any = {
             table: getIdentifierText(childCtx.refTable),
             column: getIdentifierText(childCtx.refColumn),
           }
+          if (childCtx.name)
+           fkConstraint.name = getIdentifierText(childCtx.name)
+          this.currentColumn.fkConstraint = fkConstraint
           break
         case "defaultSpec":
-          this.currentColumn.default = {
-            value: childCtx.children[1].getText()
-          }
-          if (childCtx.defaultValueType)
-            this.currentColumn.default.type = "sql"
+          this.currentColumn.default = this.buildDefaultValue(childCtx.children[1])
           break
       }
     }
+  }
+
+  buildDefaultValue(node) {
+    const obj: any = {}
+    switch (ruleNameOf(node)) {
+      case "UINT_LITERAL":
+      case "INT_LITERAL":
+        obj.type = "int"
+        obj.value = parseInt(node.getText(), 10)
+        break
+      case "FLOAT_LITERAL":
+        obj.type = "float"
+        obj.value = parseFloat(node.getText())
+        break
+      case "DATE_LITERAL":
+      case "DATETIME_LITERAL":
+      case "TIME_LITERAL":
+        obj.value = node.getText()
+        break
+      case "STRING_LITERAL":
+        const text = node.getText()
+        obj.value = text.substring(1, text.length - 1).replace(/[']{2}/, "'")
+        obj.type = "string"
+        break
+      case "KW_CURRENT_DATE":
+      case "KW_CURRENT_TIME":
+      case "KW_CURRENT_TS":
+        obj.type = "sql"
+        obj.value = node.getText()
+        break
+    }
+    return obj
   }
 
   enterUniqueConstraint(ctx) {

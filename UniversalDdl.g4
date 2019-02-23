@@ -8,7 +8,7 @@ script : tableDef+ EOF ;
 id : IDENTIFIER ;
 identifierList : id ( COMMA id )* ;
 
-uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )?KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+uniqueConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
 pkConstraintDef : ( KW_CONSTRAINT constraintName=id )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
 
 onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
@@ -20,27 +20,8 @@ constraintDef : uniqueConstraintDef # UniqueConstraint
               | fkConstraintDef     # ForeignKeyConstraint
               ;
 
-inlineForeignKeyDef : ( KW_FK )? KW_REF refTable=id ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? onDelete=onDeleteAction? ;
-
-sqlConstant : KW_CURRENT_DATE | KW_CURRENT_TIME | KW_CURRENT_TS ;
-defaultSpec : KW_DEFAULT (
-                UINT_LITERAL
-              | INT_LITERAL
-              | FLOAT_LITERAL
-              | DATE_LITERAL
-              | TIME_LITERAL
-              | DATETIME_LITERAL
-              | STRING_LITERAL
-              | sqlConstant
-              ) ;
-
-columnDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
-
-columnDef : columnName=id columnType columnDetails? ;
-
-tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
-
-tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON ;
+inlineForeignKeyDef : ( KW_CONSTRAINT name=id )? ( KW_FK )? KW_REF refTable=id
+                      ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? onDelete=onDeleteAction? ;
 
 columnType : BIGINT
            | DATE
@@ -58,6 +39,29 @@ columnType : BIGINT
            | NUMERIC ( LEFT_BRACKET UINT_LITERAL ( COMMA UINT_LITERAL )? RIGHT_BRACKET )?
            | VARCHAR LEFT_BRACKET UINT_LITERAL RIGHT_BRACKET
            ;
+
+defaultSpec : KW_DEFAULT (
+                UINT_LITERAL
+              | INT_LITERAL
+              | FLOAT_LITERAL
+              | DATE_LITERAL
+              | TIME_LITERAL
+              | DATETIME_LITERAL
+              | STRING_LITERAL
+              | KW_CURRENT_DATE
+              | KW_CURRENT_TIME
+              | KW_CURRENT_TS
+              ) ;
+
+columnDetails : ( KW_PK | KW_UNIQUE | KW_NULL | KW_NOT_NULL | defaultSpec | inlineForeignKeyDef )+ ;
+
+columnDef : columnName=id columnType columnDetails? ;
+
+tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
+
+tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON ;
+
+
 
 /**
  * Lexer rules
@@ -154,10 +158,8 @@ SEMICOLON : ';' ;
 /*
  * Literals for SQL values
  */
-BIT_LITERAL : '0' | '1' ;
-
 UINT_LITERAL : DIGIT+ ;
-INT_LITERAL : ( '+' | '-' ) DIGIT+ ;
+INT_LITERAL : ( '+' | '-' )? DIGIT+ ;
 
 FLOAT_LITERAL : ( '+' | '-' )? DIGIT+ '.' DIGIT+
               | ( '+' | '-' )? DIGIT+ E DIGIT+ ;
