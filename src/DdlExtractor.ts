@@ -63,19 +63,19 @@ export default class DdlExtractor extends UniversalDdlListener {
             this.currentColumn.primaryKeyContraintName = getIdentifierText(childCtx.constraintName)
           break
         case "inlineUniqueConstraintDef":
-          this.currentColumn.unique = true
           if (childCtx.constraintName) {
             this.currentColumn.uniqueConstraint = {
               name: getIdentifierText(childCtx.constraintName)
             }
-          }
+          } else
+            this.currentColumn.uniqueConstraint = true
           break
         case "inlineForeignKeyConstraintDef":
           const fkConstraint: any = {
-            refTable: getIdentifierText(childCtx.refTable)
+            referencedTable: getIdentifierText(childCtx.referencedTable)
           }
-          if (childCtx.refColumn)
-            fkConstraint.refColumn = getIdentifierText(childCtx.refColumn)
+          if (childCtx.referencedColumn)
+            fkConstraint.referencedColumn = getIdentifierText(childCtx.referencedColumn)
           if (childCtx.constraintName)
             fkConstraint.name = getIdentifierText(childCtx.constraintName)
           this.currentColumn.foreignKeyConstraint = fkConstraint
@@ -167,10 +167,10 @@ export default class DdlExtractor extends UniversalDdlListener {
   buildFullForeignKeyConstraint(ctx) {
     const constraint: any = {
       columns: getIdListItemTexts(ctx.columns),
-      refTable: getIdentifierText(ctx.refTable)
+      referencedTable: getIdentifierText(ctx.referencedTable)
     }
-    if (ctx.refColumns)
-      constraint.refColumns = getIdListItemTexts(ctx.refColumns)
+    if (ctx.referencedColumns)
+      constraint.referencedColumns = getIdListItemTexts(ctx.referencedColumns)
     if (ctx.constraintName)
       constraint.name = getIdentifierText(ctx.constraintName)
     return constraint

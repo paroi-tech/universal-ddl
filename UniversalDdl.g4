@@ -20,10 +20,10 @@ inlinePrimaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK 
 onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
 
 foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
-                          KW_REF refTable=id ( LEFT_BRACKET refColumns=identifierList RIGHT_BRACKET )? onDelete=onDeleteAction? ;
+                          KW_REF referencedTable=id ( LEFT_BRACKET referencedColumns=identifierList RIGHT_BRACKET )? onDelete=onDeleteAction? ;
 
-inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? ( KW_FK )? KW_REF refTable=id
-                                ( LEFT_BRACKET refColumn=id RIGHT_BRACKET )? ;
+inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? ( KW_FK )? KW_REF referencedTable=id
+                                ( LEFT_BRACKET referencedColumn=id RIGHT_BRACKET )? ;
 
 constraintDef : uniqueConstraintDef     # FullUniqueConstraintDef
               | primaryKeyConstraintDef # FullPrimaryKeyConstraintDef

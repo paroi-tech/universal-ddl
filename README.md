@@ -26,6 +26,7 @@ node dist/example.js
 
 With VS Code, our recommanded plugins are:
 
+- **ANTLR4 grammar syntax support** from Mike Lischke (`mike-lischke.vscode-antlr4`)
 - **TODO Highlight** from Wayou Liu (`wayou.vscode-todo-highlight`)
 - **TSLint** from Microsoft (`ms-vscode.vscode-typescript-tslint-plugin`)
 
