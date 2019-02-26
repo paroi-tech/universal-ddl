@@ -19,7 +19,7 @@ uniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                       RIGHT_BRACKET
                       ;
 
-inlineUniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE ;
+uniqueColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE ;
 
 primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                           KW_PK
@@ -28,7 +28,7 @@ primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                           RIGHT_BRACKET
                           ;
 
-inlinePrimaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK ;
+primaryKeyColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK ;
 
 onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
 
@@ -43,7 +43,7 @@ foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                           onDelete=onDeleteAction?
                           ;
 
-inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
+foreignKeyColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                                 ( KW_FK )?
                                 KW_REF
                                 referencedTable=id
@@ -86,16 +86,16 @@ defaultSpec : KW_DEFAULT (
 columnDetails : (
                   KW_NULL
                 | KW_NOT_NULL
-                | inlinePrimaryKeyConstraintDef
-                | inlineUniqueConstraintDef
+                | primaryKeyColumnConstraintDef
+                | uniqueColumnConstraintDef
                 | defaultSpec
-                | inlineForeignKeyConstraintDef
+                | foreignKeyColumnConstraintDef
                 )+
                 ;
 
 columnDef : columnName=id columnType columnDetails? ;
 
-tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
+tableItemList : ( columnDef | constraintDef ) ( COMMA ( columnDef | constraintDef ) )* ;
 
 tableDef : KW_CREATE
            KW_TABLE

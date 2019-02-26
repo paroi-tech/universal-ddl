@@ -1,3 +1,4 @@
+import { AstColumn, AstColumnConstraint, AstColumnConstraintComposition, AstTable } from "../src/ast"
 import { parseDdl } from "../src/parse-ddl"
 
 describe("AST Specification for columns", () => {
@@ -10,8 +11,9 @@ describe("AST Specification for columns", () => {
           a ${dataType}
         );
         `
-      const ast = parseDdl(input)
-      expect(ast.orders[0].columns[0].type).toEqual(dataType)
+      const table = parseDdl(input).orders[0] as AstTable
+      const column = table.entries[0] as AstColumn
+      expect(column.type).toEqual(dataType)
     })
   }
 
@@ -52,9 +54,10 @@ describe("AST Specification for columns", () => {
           a ${type}(${args.join(", ")})
         );
         `
-      const ast = parseDdl(input)
-      expect(ast.orders[0].columns[0].type).toEqual(type)
-      expect(ast.orders[0].columns[0].typeArgs).toEqual(args)
+      const table = parseDdl(input).orders[0] as AstTable
+      const column = table.entries[0] as AstColumn
+      expect(column.type).toEqual(type)
+      expect(column.typeArgs).toEqual(args)
     })
   }
 
@@ -64,46 +67,69 @@ describe("AST Specification for columns", () => {
         a integer not null
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].notNull).toEqual(true)
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        { constraintType: "notNull" }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("inline primary key", () => {
+  test("column constraint: primary key", () => {
     const input = `
       create table t1(
         a integer not null primary key
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].notNull).toEqual(true)
-    expect(ast.orders[0].columns[0].primaryKey).toEqual(true)
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        { constraintType: "notNull" },
+        { constraintType: "primaryKey" }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("autoincrement", () => {
+  test("column constraint: primary key autoincrement", () => {
     const input = `
       create table t1(
         a integer not null primary key autoincrement
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].notNull).toEqual(true)
-    expect(ast.orders[0].columns[0].primaryKey).toEqual(true)
-    expect(ast.orders[0].columns[0].autoincrement).toEqual(true)
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        { constraintType: "notNull" },
+        {
+          constraintType: "primaryKey",
+          autoincrement: true
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("inline primary key references", () => {
+  test("column constraint: primary key references", () => {
     const input = `
       create table t1(
         a integer not null primary key references other_table(b)
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].notNull).toEqual(true)
-    expect(ast.orders[0].columns[0].primaryKey).toEqual(true)
-    expect(ast.orders[0].columns[0].foreignKeyConstraint).toEqual({
-      "referencedTable": "other_table",
-      "referencedColumn": "b"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        { constraintType: "notNull" },
+        { constraintType: "primaryKey" },
+        {
+          constraintType: "foreignKey",
+          referencedTable: "other_table",
+          referencedColumn: "b"
+        },
+      ]
+    } as AstColumnConstraintComposition)
   })
 
   test("default sql value", () => {
@@ -112,11 +138,19 @@ describe("AST Specification for columns", () => {
         a timestamp default current_timestamp
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].default).toEqual({
-      "type": "sql",
-      "value": "current_timestamp"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "default",
+          value: {
+            type: "sql",
+            value: "current_timestamp"
+          }
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
   test("default string value", () => {
@@ -125,11 +159,19 @@ describe("AST Specification for columns", () => {
         a varchar(200) default 'John '' Wick'
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].default).toEqual({
-      "type": "string",
-      "value": "John ' Wick"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "default",
+          value: {
+            type: "string",
+            value: "John ' Wick"
+          }
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
   test("default int value", () => {
@@ -138,11 +180,19 @@ describe("AST Specification for columns", () => {
         a integer default 123
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].default).toEqual({
-      "type": "int",
-      "value": 123
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "default",
+          value: {
+            type: "int",
+            value: 123
+          }
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
   test("default float value", () => {
@@ -151,59 +201,88 @@ describe("AST Specification for columns", () => {
         a numeric(4,2) default 12.35
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].default).toEqual({
-      "type": "float",
-      "value": 12.35
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "default",
+          value: {
+            type: "float",
+            value: 12.35
+          }
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("inline foreign key", () => {
+  test("column constraint: foreign key", () => {
     const input = `
       create table t1(
         a integer references other_table(b)
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].foreignKeyConstraint).toEqual({
-      "referencedTable": "other_table",
-      "referencedColumn": "b"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "foreignKey",
+          referencedTable: "other_table",
+          referencedColumn: "b"
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("named inline foreign key", () => {
+  test("named column constraint: foreign key", () => {
     const input = `
       create table t1(
         a integer constraint fk1 references other_table(b)
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].foreignKeyConstraint).toEqual({
-      "name": "fk1",
-      "referencedTable": "other_table",
-      "referencedColumn": "b"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      name: "fk1",
+      constraints: [
+        {
+          constraintType: "foreignKey",
+          referencedTable: "other_table",
+          referencedColumn: "b"
+        }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("inline constraint: unique", () => {
+  test("column constraint: unique", () => {
     const input = `
       create table t1(
         a integer unique
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].uniqueConstraint).toEqual(true)
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        { constraintType: "unique" }
+      ]
+    } as AstColumnConstraintComposition)
   })
 
-  test("named inline constraint: unique", () => {
+  test("named column constraint: unique", () => {
     const input = `
       create table t1(
         a integer constraint u1 unique
       );
       `
-    const ast = parseDdl(input)
-    expect(ast.orders[0].columns[0].uniqueConstraint).toEqual({
-      "name": "u1"
-    })
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      name: "u1",
+      constraints: [
+        { constraintType: "unique" }
+      ]
+    } as AstColumnConstraintComposition)
   })
 })

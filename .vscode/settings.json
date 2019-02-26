@@ -1,7 +1,11 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": false
+  "[antlr]": {
+    "editor.formatOnSave": false
   },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
     120
@@ -19,9 +23,5 @@
   "tslint.configFile": "tslint.json",
   "tslint.jsEnable": true,
   "typescript.locale": "en",
-  "typescript.preferences.quoteStyle": "double",
-  "[antlr]": {
-    "editor.formatOnSave": false
-  },
-  "editor.formatOnSave": true
+  "typescript.preferences.quoteStyle": "double"
 }

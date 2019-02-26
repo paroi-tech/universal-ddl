@@ -1,15 +1,15 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
-import { BasicAst } from "./basic-ast"
+import { Ast, AstColumn, AstCreateIndex, AstForeignKeyConstraint, AstIndex, AstPrimaryKeyConstraint, AstTable, AstUniqueConstraint, AstValue, AstColumnConstraintComposition, AstForeignKeyColumnConstraint, AstTableConstraintComposition } from "./ast"
 import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
-  script!: BasicAst
-  private currentTable: any
-  private currentColumn: any
+  ast?: Ast
+  private currentTable?: AstTable
+  private currentColumn?: AstColumn
 
-  enterScript(ctx) {
-    this.script = {
+  enterScript() {
+    this.ast = {
       orders: []
     }
   }
@@ -18,9 +18,9 @@ export default class DdlExtractor extends UniversalDdlListener {
     this.currentTable = {
       orderType: "createTable",
       name: getIdentifierText(ctx.tableName),
-      columns: []
+      entries: []
     }
-    this.script!.orders.push(this.currentTable)
+    this.ast!.orders.push(this.currentTable)
   }
 
   exitTableDef() {
@@ -28,31 +28,27 @@ export default class DdlExtractor extends UniversalDdlListener {
   }
 
   enterIndexDef(ctx) {
-    const order: any = {
-      orderType: "createIndex",
-      table: getIdentifierText(ctx.tableName)
-    }
-    const details: any = {
+    const index: any = { // AstIndex | AstUniqueConstraint
       columns: getIdListItemTexts(ctx.columns)
     }
+    if (ctx.KW_UNIQUE())
+      index.constraintType = "unique"
 
-    if (ctx.indexName)
-      details.name = getIdentifierText(ctx.indexName)
-    if (ctx.KW_UNIQUE()) {
-      order.indexType = "unique"
-      order.uniqueConstraint = details
-    } else {
-      order.indexType = "index"
-      order.index = details
+    const order: AstCreateIndex = {
+      orderType: "createIndex",
+      table: getIdentifierText(ctx.tableName),
+      index
     }
-    this.script.orders.push(order)
+    if (ctx.indexName)
+      order.name = getIdentifierText(ctx.indexName)
+    this.ast!.orders.push(order)
   }
-
 
   enterColumnDef(ctx) {
     const typeCtx = ctx.columnType()
 
-    this.currentColumn = {
+    const column: AstColumn = {
+      entryType: "column",
       name: getIdentifierText(ctx.columnName),
       type: typeCtx.children[0].getText(),
     }
@@ -64,134 +60,170 @@ export default class DdlExtractor extends UniversalDdlListener {
       const args: any[] = []
       for (const intLiteral of params)
         args.push(parseInt(intLiteral.getText(), 10))
-      this.currentColumn.typeArgs = args
+      column.typeArgs = args
     }
+
+    this.currentColumn = column
+    this.currentTable!.entries.push(column)
   }
 
   exitColumnDef(ctx) {
-    this.currentTable.columns.push(this.currentColumn)
     this.currentColumn = undefined
   }
 
   enterColumnDetails(ctx) {
     if (!ctx.children)
       return
+
+    const constraintCompositions: AstColumnConstraintComposition[] = []
+    let composition: AstColumnConstraintComposition | undefined
+
     for (const childCtx of ctx.children) {
+      if (!composition || childCtx.constraintName) {
+        composition = {
+          constraints: []
+        }
+        if (childCtx.constraintName)
+          composition.name = getIdentifierText(childCtx.constraintName)
+        constraintCompositions.push(composition)
+      }
+
       switch (ruleNameOf(childCtx)) {
         case "KW_NOT_NULL":
-          this.currentColumn.notNull = true
+          composition.constraints.push({
+            constraintType: "notNull"
+          })
           break
-        case "inlinePrimaryKeyConstraintDef":
-          this.currentColumn.primaryKey = true
-          if (childCtx.constraintName)
-            this.currentColumn.primaryKeyContraintName = getIdentifierText(childCtx.constraintName)
+        case "primaryKeyColumnConstraintDef":
+          composition.constraints.push({
+            constraintType: "primaryKey"
+          })
           break
-        case "inlineUniqueConstraintDef":
-          if (childCtx.constraintName) {
-            this.currentColumn.uniqueConstraint = {
-              name: getIdentifierText(childCtx.constraintName)
-            }
-          } else
-            this.currentColumn.uniqueConstraint = true
+        case "uniqueColumnConstraintDef":
+          composition.constraints.push({
+            constraintType: "unique"
+          })
           break
-        case "inlineForeignKeyConstraintDef":
-          const fkConstraint: any = {
+        case "foreignKeyColumnConstraintDef":
+          const fkConstraint: AstForeignKeyColumnConstraint = {
+            constraintType: "foreignKey",
             referencedTable: getIdentifierText(childCtx.referencedTable)
           }
           if (childCtx.referencedColumn)
             fkConstraint.referencedColumn = getIdentifierText(childCtx.referencedColumn)
-          if (childCtx.constraintName)
-            fkConstraint.name = getIdentifierText(childCtx.constraintName)
-          this.currentColumn.foreignKeyConstraint = fkConstraint
+          composition.constraints.push(fkConstraint)
           break
         case "defaultSpec":
-          this.currentColumn.default = this.buildDefaultValue(childCtx.children[1])
+          composition.constraints.push({
+            constraintType: "default",
+            value: buildDefaultValue(childCtx.children[1])
+          })
           break
       }
     }
-  }
 
-  buildDefaultValue(node) {
-    const obj: any = {}
-    switch (ruleNameOf(node)) {
-      case "UINT_LITERAL":
-      case "INT_LITERAL":
-        obj.type = "int"
-        obj.value = parseInt(node.getText(), 10)
-        break
-      case "FLOAT_LITERAL":
-        obj.type = "float"
-        obj.value = parseFloat(node.getText())
-        break
-      case "STRING_LITERAL":
-        const text = node.getText()
-        obj.value = text.substring(1, text.length - 1).replace(/[']{2}/, "'")
-        obj.type = "string"
-        break
-      case "KW_CURRENT_DATE":
-      case "KW_CURRENT_TIME":
-      case "KW_CURRENT_TS":
-        obj.type = "sql"
-        obj.value = node.getText()
-        break
-    }
-    return obj
+    if (constraintCompositions.length > 0)
+      this.currentColumn!.constraintCompositions = constraintCompositions
   }
 
   enterFullUniqueConstraintDef(ctx) {
+    const table = this.currentTable!
     if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      if (!this.currentTable.uniqueConstraints)
-        this.currentTable.uniqueConstraints = []
-      this.currentTable.uniqueConstraints.push(
-        this.buildFullUniqueConstraint(ctx.uniqueConstraintDef())
+      table.entries.push(
+        buildFullUniqueConstraint(ctx.uniqueConstraintDef())
       )
     }
   }
 
   enterFullPrimaryKeyConstraintDef(ctx) {
-    if (ruleNameOf(ctx.parentCtx) === "tableItemList")
-      this.currentTable.primaryKey = this.buildFullPrimaryKeyConstraint(
-        ctx.primaryKeyConstraintDef()
+    const table = this.currentTable!
+    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
+      table.entries.push(
+        buildFullPrimaryKeyConstraint(ctx.primaryKeyConstraintDef())
       )
+    }
   }
 
   enterFullForeignKeyConstraintDef(ctx) {
+    const table = this.currentTable!
     if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      if (!this.currentTable.foreignKeyConstraints)
-        this.currentTable.foreignKeyConstraints = []
-      this.currentTable.foreignKeyConstraints.push(
-        this.buildFullForeignKeyConstraint(ctx.foreignKeyConstraintDef())
+      table.entries.push(
+        buildFullForeignKeyConstraint(ctx.foreignKeyConstraintDef())
       )
     }
   }
+}
 
-  buildFullUniqueConstraint(ctx) {
-    const constraint: any = {
+function buildDefaultValue(node): AstValue {
+  switch (ruleNameOf(node)) {
+    case "UINT_LITERAL":
+    case "INT_LITERAL":
+      return {
+        type: "int",
+        value: parseInt(node.getText(), 10)
+      }
+    case "FLOAT_LITERAL":
+      return {
+        type: "float",
+        value: parseFloat(node.getText())
+      }
+    case "STRING_LITERAL":
+      const text = node.getText()
+      return {
+        type: "string",
+        value: text.substring(1, text.length - 1).replace(/[']{2}/, "'")
+      }
+    case "KW_CURRENT_DATE":
+    case "KW_CURRENT_TIME":
+    case "KW_CURRENT_TS":
+      return {
+        type: "sql",
+        value: node.getText()
+      }
+    default:
+      throw new Error(`Unexpected value: ${ruleNameOf(node)}`)
+  }
+}
+
+function buildFullUniqueConstraint(ctx): AstTableConstraintComposition {
+  const composition: AstTableConstraintComposition = {
+    entryType: "constraintComposition",
+    constraints: [{
+      constraintType: "unique",
       columns: getIdListItemTexts(ctx.identifierList())
-    }
-    if (ctx.constraintName)
-      constraint.name = getIdentifierText(ctx.constraintName)
-    return constraint
+    }]
   }
+  if (ctx.constraintName)
+    composition.name = getIdentifierText(ctx.constraintName)
+  return composition
+}
 
-  buildFullPrimaryKeyConstraint(ctx) {
-    const constraint: any = {
+function buildFullPrimaryKeyConstraint(ctx): AstTableConstraintComposition {
+  const composition: AstTableConstraintComposition = {
+    entryType: "constraintComposition",
+    constraints: [{
+      constraintType: "primaryKey",
       columns: getIdListItemTexts(ctx.identifierList())
-    }
-    if (ctx.constraintName)
-      constraint.name = getIdentifierText(ctx.constraintName)
-    return constraint
+    }]
   }
+  if (ctx.constraintName)
+    composition.name = getIdentifierText(ctx.constraintName)
+  return composition
+}
 
-  buildFullForeignKeyConstraint(ctx) {
-    const constraint: any = {
-      columns: getIdListItemTexts(ctx.columns),
-      referencedTable: getIdentifierText(ctx.referencedTable)
-    }
-    if (ctx.referencedColumns)
-      constraint.referencedColumns = getIdListItemTexts(ctx.referencedColumns)
-    if (ctx.constraintName)
-      constraint.name = getIdentifierText(ctx.constraintName)
-    return constraint
+function buildFullForeignKeyConstraint(ctx): AstTableConstraintComposition {
+  const fkConstraint: AstForeignKeyConstraint = {
+    constraintType: "foreignKey",
+    columns: getIdListItemTexts(ctx.columns),
+    referencedTable: getIdentifierText(ctx.referencedTable)
   }
+  if (ctx.referencedColumns)
+    fkConstraint.referencedColumns = getIdListItemTexts(ctx.referencedColumns)
+  const composition: AstTableConstraintComposition = {
+    entryType: "constraintComposition",
+    constraints: [fkConstraint]
+  }
+  if (ctx.constraintName)
+    composition.name = getIdentifierText(ctx.constraintName)
+  return composition
 }
