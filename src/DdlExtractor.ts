@@ -4,7 +4,7 @@ import { BasicAst } from "./basic-ast"
 import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
-  script: BasicAst | undefined
+  script!: BasicAst
   private currentTable: any
   private currentColumn: any
 
@@ -27,6 +27,28 @@ export default class DdlExtractor extends UniversalDdlListener {
     this.currentTable = undefined
   }
 
+  enterIndexDef(ctx) {
+    const order: any = {
+      orderType: "createIndex",
+      table: getIdentifierText(ctx.tableName)
+    }
+    const details: any = {
+      columns: getIdListItemTexts(ctx.columns)
+    }
+
+    if (ctx.indexName)
+      details.name = getIdentifierText(ctx.indexName)
+    if (ctx.KW_UNIQUE()) {
+      order.indexType = "unique"
+      order.uniqueConstraint = details
+    } else {
+      order.indexType = "index"
+      order.index = details
+    }
+    this.script.orders.push(order)
+  }
+
+
   enterColumnDef(ctx) {
     const typeCtx = ctx.columnType()
 
@@ -37,6 +59,8 @@ export default class DdlExtractor extends UniversalDdlListener {
 
     if (typeCtx.children.length > 1 && "UINT_LITERAL" in typeCtx) {
       const params = typeCtx.UINT_LITERAL()
+      if (!params)
+        return
       const args: any[] = []
       for (const intLiteral of params)
         args.push(parseInt(intLiteral.getText(), 10))
@@ -98,11 +122,6 @@ export default class DdlExtractor extends UniversalDdlListener {
       case "FLOAT_LITERAL":
         obj.type = "float"
         obj.value = parseFloat(node.getText())
-        break
-      case "DATE_LITERAL":
-      case "DATETIME_LITERAL":
-      case "TIME_LITERAL":
-        obj.value = node.getText()
         break
       case "STRING_LITERAL":
         const text = node.getText()

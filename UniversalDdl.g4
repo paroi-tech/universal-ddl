@@ -3,27 +3,52 @@ grammar UniversalDdl ;
 /**
  * Parser rules
  */
-script : tableDef+ EOF ;
+
+// FIXME: We can't create an index or alter a table
+// if no table has been previously created.
+script : ( tableDef | indexDef )+ EOF ;
 
 id : IDENTIFIER ;
 
 identifierList : id ( COMMA id )* ;
 
-uniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE LEFT_BRACKET identifierList RIGHT_BRACKET ;
+uniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
+                      KW_UNIQUE
+                      LEFT_BRACKET
+                      identifierList
+                      RIGHT_BRACKET
+                      ;
 
 inlineUniqueConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_UNIQUE ;
 
-primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
+                          KW_PK
+                          LEFT_BRACKET
+                          identifierList
+                          RIGHT_BRACKET
+                          ;
 
-inlinePrimaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK LEFT_BRACKET identifierList RIGHT_BRACKET ;
+inlinePrimaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK ;
 
 onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
 
-foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_FK LEFT_BRACKET columns=identifierList RIGHT_BRACKET
-                          KW_REF referencedTable=id ( LEFT_BRACKET referencedColumns=identifierList RIGHT_BRACKET )? onDelete=onDeleteAction? ;
+foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
+                          KW_FK
+                          LEFT_BRACKET
+                          columns=identifierList
+                          RIGHT_BRACKET
+                          KW_REF
+                          referencedTable=id
+                          ( LEFT_BRACKET referencedColumns=identifierList RIGHT_BRACKET )?
+                          onDelete=onDeleteAction?
+                          ;
 
-inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? ( KW_FK )? KW_REF referencedTable=id
-                                ( LEFT_BRACKET referencedColumn=id RIGHT_BRACKET )? ;
+inlineForeignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
+                                ( KW_FK )?
+                                KW_REF
+                                referencedTable=id
+                                ( LEFT_BRACKET referencedColumn=id RIGHT_BRACKET )?
+                                ;
 
 constraintDef : uniqueConstraintDef     # FullUniqueConstraintDef
               | primaryKeyConstraintDef # FullPrimaryKeyConstraintDef
@@ -51,14 +76,12 @@ defaultSpec : KW_DEFAULT (
                 UINT_LITERAL
               | INT_LITERAL
               | FLOAT_LITERAL
-              | DATE_LITERAL
-              | TIME_LITERAL
-              | DATETIME_LITERAL
               | STRING_LITERAL
               | KW_CURRENT_DATE
               | KW_CURRENT_TIME
               | KW_CURRENT_TS
-              ) ;
+              )
+              ;
 
 columnDetails : (
                   KW_NULL
@@ -74,9 +97,24 @@ columnDef : columnName=id columnType columnDetails? ;
 
 tableItemList : columnDef ( COMMA ( columnDef | constraintDef ) )* ;
 
-tableDef : KW_CREATE KW_TABLE tableName=id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON ;
+tableDef : KW_CREATE
+           KW_TABLE
+           tableName=id
+           LEFT_BRACKET
+           tableItemList
+           RIGHT_BRACKET
+           SEMICOLON
+           ;
 
-
+indexDef : KW_CREATE
+           KW_UNIQUE?
+           KW_INDEX
+           indexName=id
+           KW_ON
+           tableName=id
+           LEFT_BRACKET columns=identifierList RIGHT_BRACKET
+           SEMICOLON
+           ;
 
 /**
  * Lexer rules
@@ -178,12 +216,6 @@ INT_LITERAL : ( '+' | '-' )? DIGIT+ ;
 
 FLOAT_LITERAL : ( '+' | '-' )? DIGIT+ '.' DIGIT+
               | ( '+' | '-' )? DIGIT+ E DIGIT+ ;
-
-DATE_LITERAL : DIGIT DIGIT DIGIT DIGIT '-' DIGIT DIGIT '-' DIGIT DIGIT ;
-
-TIME_LITERAL : DIGIT DIGIT ':' DIGIT DIGIT ':' DIGIT DIGIT ;
-
-DATETIME_LITERAL : DATE_LITERAL ' ' TIME_LITERAL ;
 
 STRING_LITERAL : '\'' ( ~'\'' | '\'\'' )* '\'' ;
 
