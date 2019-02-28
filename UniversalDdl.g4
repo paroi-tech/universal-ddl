@@ -4,8 +4,6 @@ grammar UniversalDdl ;
  * Parser rules
  */
 
-// FIXME: We can't create an index or alter a table
-// if no table has been previously created.
 script : ( tableDef | indexDef )+ EOF ;
 
 id : IDENTIFIER ;
@@ -116,6 +114,18 @@ indexDef : KW_CREATE
            SEMICOLON
            ;
 
+alterTableItem : KW_ADD columnDef
+	             | KW_DROP columnName=id (KW_RESTRICT | KW_CASCADE)?
+               | KW_ADD constraintDef
+               | KW_DROP constraintName=id ( KW_RESTRICT | KW_CASCADE )?
+               ;
+
+alterTableDef : KW_ALTER
+                KW_TABLE
+                tableName=id
+                alterTableItem
+                ;
+
 /**
  * Lexer rules
  */
@@ -179,11 +189,15 @@ VARCHAR : V A R C H A R ;
 /*
  * Keywords as fragments
  */
+fragment ADD : A D D ;
+fragment ALTER : A L T E R ;
 fragment CASCADE : C A S C A D E ;
+fragment COLUMN : C O L U M N ;
 fragment CONSTRAINT : C O N S T R A I N T ;
 fragment CREATE : C R E A T E ;
 fragment DEFAULT : D E F A U L T ;
 fragment DELETE : D E L E T E ;
+fragment DROP : D R O P ;
 fragment FOREIGN : F O R E I G N ;
 fragment INDEX : I N D E X ;
 fragment KEY : K E Y ;
@@ -230,11 +244,15 @@ KW_CURRENT_TS : C U R R E N T UNDERSCORE T I M E S T A M P ;
 /*
  * Keywords
  */
+KW_ADD : ADD;
+KW_ALTER : ALTER;
 KW_CASCADE : CASCADE ;
+KW_COLUMN : COLUMN ;
 KW_CONSTRAINT : CONSTRAINT ;
 KW_CREATE : CREATE ;
 KW_DEFAULT : DEFAULT ;
 KW_DELETE : DELETE ;
+KW_DROP : DROP ;
 KW_FK : FOREIGN WS+ KEY ;
 KW_INDEX : INDEX ;
 KW_NOT : NOT ;

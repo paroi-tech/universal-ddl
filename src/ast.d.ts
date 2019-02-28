@@ -86,16 +86,16 @@ export interface AstDefaultColumnConstraint {
 }
 
 export interface AstPrimaryKeyColumnConstraint {
-  constraintType: "primaryKey",
+  constraintType: "primaryKey"
   autoincrement?: boolean
 }
 
 export interface AstUniqueColumnConstraint {
-  constraintType: "unique",
+  constraintType: "unique"
 }
 
 export interface AstForeignKeyColumnConstraint {
-  constraintType: "foreignKey",
-  referencedTable: string,
+  constraintType: "foreignKey"
+  referencedTable: string
   referencedColumn?: string
 }

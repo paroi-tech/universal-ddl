@@ -1,12 +1,23 @@
 const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
-import { Ast, AstColumn, AstCreateIndex, AstForeignKeyConstraint, AstIndex, AstPrimaryKeyConstraint, AstTable, AstUniqueConstraint, AstValue, AstColumnConstraintComposition, AstForeignKeyColumnConstraint, AstTableConstraintComposition } from "./ast"
+import {
+  Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition,
+  AstCreateIndex, AstForeignKeyColumnConstraint, AstForeignKeyConstraint,
+  AstIndex, AstPrimaryKeyConstraint, AstTable,
+  AstTableConstraintComposition, AstTableEntry, AstUniqueConstraint, AstValue
+} from "./ast"
 import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
   ast?: Ast
   private currentTable?: AstTable
+  private currentEntries?: AstTableEntry[]
   private currentColumn?: AstColumn
+
+  // TODO: use a tmp array to hold column and constraint defs.
+  // Then in exitTableDef and exitAlterDef add the items to table or
+  // currentTable or currentAlter object and sempty the tmp array.
+  // Remove currentColumn and use currentEntries.
 
   enterScript() {
     this.ast = {
@@ -25,6 +36,19 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   exitTableDef() {
     this.currentTable = undefined
+  }
+
+  enterAlterTableDef(ctx) {
+    const order: AstAlterTable = {
+      orderType: "alterTable",
+      table: getIdentifierText(ctx.tableName),
+      add: []
+    }
+    this.currentAlterTable = order
+  }
+
+  exitAlterTable(ctx) {
+    this.currentAlterTable = undefined
   }
 
   enterIndexDef(ctx) {
@@ -64,10 +88,11 @@ export default class DdlExtractor extends UniversalDdlListener {
     }
 
     this.currentColumn = column
-    this.currentTable!.entries.push(column)
   }
 
   exitColumnDef(ctx) {
+    if (ruleNameOf(ctx.parentCtx) === "tableItemList")
+      this.currentTable!.entries.push(this.currentColumn!)
     this.currentColumn = undefined
   }
 
