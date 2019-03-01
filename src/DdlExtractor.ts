@@ -126,6 +126,8 @@ export default class DdlExtractor extends UniversalDdlListener {
           }
           if (childCtx.referencedColumn)
             fkConstraint.referencedColumn = getIdentifierText(childCtx.referencedColumn)
+          if (childCtx.onDelete && childCtx.onDelete.KW_CASCADE())
+            fkConstraint.onDelete = "cascade"
           composition.constraints.push(fkConstraint)
           break
         case "defaultSpec":
@@ -231,5 +233,7 @@ function buildTableForeignKeyConstraint(ctx): AstTableConstraintComposition {
   }
   if (ctx.constraintName)
     composition.name = getIdentifierText(ctx.constraintName)
+  if (ctx.onDelete && ctx.onDelete.KW_CASCADE())
+    fkConstraint.onDelete = "cascade"
   return composition
 }

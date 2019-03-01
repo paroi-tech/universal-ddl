@@ -28,7 +28,7 @@ primaryKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
 
 primaryKeyColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )? KW_PK ;
 
-onDeleteAction : KW_ON KW_DELETE ( KW_DELETE | KW_RESTRICT )? ;
+onDeleteAction : KW_ON KW_DELETE ( KW_CASCADE | KW_RESTRICT )? ;
 
 foreignKeyConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                           KW_FK
@@ -46,6 +46,7 @@ foreignKeyColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                                 KW_REF
                                 referencedTable=id
                                 ( LEFT_BRACKET referencedColumn=id RIGHT_BRACKET )?
+                                onDelete=onDeleteAction?
                                 ;
 
 constraintDef : uniqueConstraintDef     # TableUniqueConstraintDef
