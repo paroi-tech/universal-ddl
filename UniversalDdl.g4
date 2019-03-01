@@ -4,7 +4,7 @@ grammar UniversalDdl ;
  * Parser rules
  */
 
-script : ( tableDef | indexDef )+ EOF ;
+script : ( tableDef | indexDef | alterTableDef )+ EOF ;
 
 id : IDENTIFIER ;
 
@@ -48,9 +48,9 @@ foreignKeyColumnConstraintDef : ( KW_CONSTRAINT ( constraintName=id )? )?
                                 ( LEFT_BRACKET referencedColumn=id RIGHT_BRACKET )?
                                 ;
 
-constraintDef : uniqueConstraintDef     # FullUniqueConstraintDef
-              | primaryKeyConstraintDef # FullPrimaryKeyConstraintDef
-              | foreignKeyConstraintDef # FullForeignKeyConstraintDef
+constraintDef : uniqueConstraintDef     # TableUniqueConstraintDef
+              | primaryKeyConstraintDef # TablePrimaryKeyConstraintDef
+              | foreignKeyConstraintDef # TableForeignKeyConstraintDef
               ;
 
 columnType : BIGINT
@@ -84,6 +84,7 @@ defaultSpec : KW_DEFAULT (
 columnDetails : (
                   KW_NULL
                 | KW_NOT_NULL
+                | KW_AUTOINCREMENT
                 | primaryKeyColumnConstraintDef
                 | uniqueColumnConstraintDef
                 | defaultSpec
@@ -114,16 +115,12 @@ indexDef : KW_CREATE
            SEMICOLON
            ;
 
-alterTableItem : KW_ADD columnDef
-	             | KW_DROP columnName=id (KW_RESTRICT | KW_CASCADE)?
-               | KW_ADD constraintDef
-               | KW_DROP constraintName=id ( KW_RESTRICT | KW_CASCADE )?
-               ;
-
 alterTableDef : KW_ALTER
                 KW_TABLE
                 tableName=id
-                alterTableItem
+	              KW_ADD
+	              ( KW_COLUMN columnDef | constraintDef )
+                SEMICOLON
                 ;
 
 /**
@@ -191,6 +188,7 @@ VARCHAR : V A R C H A R ;
  */
 fragment ADD : A D D ;
 fragment ALTER : A L T E R ;
+fragment AUTOINCREMENT : A U T O I N C R E M E N T ;
 fragment CASCADE : C A S C A D E ;
 fragment COLUMN : C O L U M N ;
 fragment CONSTRAINT : C O N S T R A I N T ;
@@ -246,6 +244,7 @@ KW_CURRENT_TS : C U R R E N T UNDERSCORE T I M E S T A M P ;
  */
 KW_ADD : ADD;
 KW_ALTER : ALTER;
+KW_AUTOINCREMENT : AUTOINCREMENT ;
 KW_CASCADE : CASCADE ;
 KW_COLUMN : COLUMN ;
 KW_CONSTRAINT : CONSTRAINT ;

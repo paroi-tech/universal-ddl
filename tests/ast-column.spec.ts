@@ -103,10 +103,8 @@ describe("AST Specification for columns", () => {
     expect(column.constraintCompositions![0]).toEqual({
       constraints: [
         { constraintType: "notNull" },
-        {
-          constraintType: "primaryKey",
-          autoincrement: true
-        }
+        { constraintType: "primaryKey" },
+        { constraintType: "autoIncrement" }
       ]
     } as AstColumnConstraintComposition)
   })
@@ -250,6 +248,26 @@ describe("AST Specification for columns", () => {
           constraintType: "foreignKey",
           referencedTable: "other_table",
           referencedColumn: "b"
+        }
+      ]
+    } as AstColumnConstraintComposition)
+  })
+
+  test("column constraint: foreign key on delete cascade", () => {
+    const input = `
+      create table t1(
+        a integer references other_table(b) on delete cascade
+      );
+      `
+    const table = parseDdl(input).orders[0] as AstTable
+    const column = table.entries[0] as AstColumn
+    expect(column.constraintCompositions![0]).toEqual({
+      constraints: [
+        {
+          constraintType: "foreignKey",
+          referencedTable: "other_table",
+          referencedColumn: "b",
+          onDelete: "cascade"
         }
       ]
     } as AstColumnConstraintComposition)

@@ -9,7 +9,12 @@ create table person(
   constraint u_birthdate unique(birthdate),
   constraint fk foreign key(name, note) references foo(bar, baz)
 );
+
 create index id1 on person(name);
+
+alter table foo add constraint foreign key(bar) references baz(bak);
+
+alter table foo add column bob int default 0 primary key;
 `
 const ast = parseDdl(input)
 console.log(JSON.stringify(ast, undefined, 2))

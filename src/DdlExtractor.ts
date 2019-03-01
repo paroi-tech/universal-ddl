@@ -10,14 +10,8 @@ import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export default class DdlExtractor extends UniversalDdlListener {
   ast?: Ast
-  private currentTable?: AstTable
-  private currentEntries?: AstTableEntry[]
+  private currentEntries: AstTableEntry[] = []
   private currentColumn?: AstColumn
-
-  // TODO: use a tmp array to hold column and constraint defs.
-  // Then in exitTableDef and exitAlterDef add the items to table or
-  // currentTable or currentAlter object and sempty the tmp array.
-  // Remove currentColumn and use currentEntries.
 
   enterScript() {
     this.ast = {
@@ -25,34 +19,26 @@ export default class DdlExtractor extends UniversalDdlListener {
     }
   }
 
-  enterTableDef(ctx) {
-    this.currentTable = {
+  exitTableDef(ctx) {
+    this.ast!.orders.push({
       orderType: "createTable",
       name: getIdentifierText(ctx.tableName),
-      entries: []
-    }
-    this.ast!.orders.push(this.currentTable)
+      entries: this.currentEntries
+    })
+    this.currentEntries = []
   }
 
-  exitTableDef() {
-    this.currentTable = undefined
-  }
-
-  enterAlterTableDef(ctx) {
-    const order: AstAlterTable = {
+  exitAlterTableDef(ctx) {
+    this.ast!.orders.push({
       orderType: "alterTable",
       table: getIdentifierText(ctx.tableName),
-      add: []
-    }
-    this.currentAlterTable = order
-  }
-
-  exitAlterTable(ctx) {
-    this.currentAlterTable = undefined
+      add: this.currentEntries
+    })
+    this.currentEntries = []
   }
 
   enterIndexDef(ctx) {
-    const index: any = { // AstIndex | AstUniqueConstraint
+    const index: any = {
       columns: getIdListItemTexts(ctx.columns)
     }
     if (ctx.KW_UNIQUE())
@@ -91,8 +77,7 @@ export default class DdlExtractor extends UniversalDdlListener {
   }
 
   exitColumnDef(ctx) {
-    if (ruleNameOf(ctx.parentCtx) === "tableItemList")
-      this.currentTable!.entries.push(this.currentColumn!)
+    this.currentEntries.push(this.currentColumn!)
     this.currentColumn = undefined
   }
 
@@ -117,6 +102,11 @@ export default class DdlExtractor extends UniversalDdlListener {
         case "KW_NOT_NULL":
           composition.constraints.push({
             constraintType: "notNull"
+          })
+          break
+        case "KW_AUTOINCREMENT":
+          composition.constraints.push({
+            constraintType: "autoIncrement"
           })
           break
         case "primaryKeyColumnConstraintDef":
@@ -151,31 +141,22 @@ export default class DdlExtractor extends UniversalDdlListener {
       this.currentColumn!.constraintCompositions = constraintCompositions
   }
 
-  enterFullUniqueConstraintDef(ctx) {
-    const table = this.currentTable!
-    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      table.entries.push(
-        buildFullUniqueConstraint(ctx.uniqueConstraintDef())
-      )
-    }
+  enterTableUniqueConstraintDef(ctx) {
+    this.currentEntries.push(
+      buildTableUniqueConstraint(ctx.uniqueConstraintDef())
+    )
   }
 
-  enterFullPrimaryKeyConstraintDef(ctx) {
-    const table = this.currentTable!
-    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      table.entries.push(
-        buildFullPrimaryKeyConstraint(ctx.primaryKeyConstraintDef())
-      )
-    }
+  enterTablePrimaryKeyConstraintDef(ctx) {
+    this.currentEntries.push(
+      buildTablePrimaryKeyConstraint(ctx.primaryKeyConstraintDef())
+    )
   }
 
-  enterFullForeignKeyConstraintDef(ctx) {
-    const table = this.currentTable!
-    if (ruleNameOf(ctx.parentCtx) === "tableItemList") {
-      table.entries.push(
-        buildFullForeignKeyConstraint(ctx.foreignKeyConstraintDef())
-      )
-    }
+  enterTableForeignKeyConstraintDef(ctx) {
+    this.currentEntries.push(
+      buildTableForeignKeyConstraint(ctx.foreignKeyConstraintDef())
+    )
   }
 }
 
@@ -210,7 +191,7 @@ function buildDefaultValue(node): AstValue {
   }
 }
 
-function buildFullUniqueConstraint(ctx): AstTableConstraintComposition {
+function buildTableUniqueConstraint(ctx): AstTableConstraintComposition {
   const composition: AstTableConstraintComposition = {
     entryType: "constraintComposition",
     constraints: [{
@@ -223,7 +204,7 @@ function buildFullUniqueConstraint(ctx): AstTableConstraintComposition {
   return composition
 }
 
-function buildFullPrimaryKeyConstraint(ctx): AstTableConstraintComposition {
+function buildTablePrimaryKeyConstraint(ctx): AstTableConstraintComposition {
   const composition: AstTableConstraintComposition = {
     entryType: "constraintComposition",
     constraints: [{
@@ -236,7 +217,7 @@ function buildFullPrimaryKeyConstraint(ctx): AstTableConstraintComposition {
   return composition
 }
 
-function buildFullForeignKeyConstraint(ctx): AstTableConstraintComposition {
+function buildTableForeignKeyConstraint(ctx): AstTableConstraintComposition {
   const fkConstraint: AstForeignKeyConstraint = {
     constraintType: "foreignKey",
     columns: getIdListItemTexts(ctx.columns),

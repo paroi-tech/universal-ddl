@@ -19,7 +19,7 @@ export interface AstAlterTable {
 export interface AstCreateIndex {
   orderType: "createIndex"
   table: string
-  name?: string,
+  name?: string
   index: AstIndex | AstUniqueConstraint
 }
 
@@ -41,9 +41,13 @@ export interface AstPrimaryKeyConstraint {
 export interface AstForeignKeyConstraint {
   constraintType: "foreignKey"
   columns: string[]
-  referencedTable: string,
+  referencedTable: string
   referencedColumns?: string[]
+  onDelete?: foreignKeyAction
+  onUpdate?: foreignKeyAction
 }
+
+export type foreignKeyAction = "cascade" | "restrict" | "noAction"
 
 export interface AstIndex {
   columns: string[]
@@ -74,7 +78,7 @@ export interface AstColumnConstraintComposition {
   constraints: AstColumnConstraint[]
 }
 
-export type AstColumnConstraint = AstNotNullColumnConstraint | AstDefaultColumnConstraint | AstPrimaryKeyColumnConstraint | AstUniqueColumnConstraint | AstForeignKeyColumnConstraint
+export type AstColumnConstraint = AstNotNullColumnConstraint | AstDefaultColumnConstraint | AstPrimaryKeyColumnConstraint | AstUniqueColumnConstraint | AstForeignKeyColumnConstraint | AstAutoIncrementColumnConstraint
 
 export interface AstNotNullColumnConstraint {
   constraintType: "notNull"
@@ -85,9 +89,12 @@ export interface AstDefaultColumnConstraint {
   value: AstValue
 }
 
+export interface AstAutoIncrementColumnConstraint {
+  constraintType: "autoIncrement"
+}
+
 export interface AstPrimaryKeyColumnConstraint {
   constraintType: "primaryKey"
-  autoincrement?: boolean
 }
 
 export interface AstUniqueColumnConstraint {
@@ -98,4 +105,6 @@ export interface AstForeignKeyColumnConstraint {
   constraintType: "foreignKey"
   referencedTable: string
   referencedColumn?: string
+  onDelete?: foreignKeyAction
+  onUpdate?: foreignKeyAction
 }

@@ -90,6 +90,27 @@ describe("AST Specification for tables", () => {
     } as AstTableConstraintComposition)
   })
 
+  test("table constraint: named foreign key on delete cascade", () => {
+    const input = `
+      create table t1(
+        col integer,
+        constraint fk1 foreign key (a, b) references other_table (c, d) on delete cascade
+      );
+      `
+    const table = parseDdl(input).orders[0] as AstTable
+    expect(table.entries[1]).toEqual({
+      entryType: "constraintComposition",
+      name: "fk1",
+      constraints: [{
+        constraintType: "foreignKey",
+        columns: ["a", "b"],
+        referencedTable: "other_table",
+        referencedColumns: ["c", "d"],
+        onDelete: "cascade"
+      }]
+    } as AstTableConstraintComposition)
+  })
+
   test("table constraint: unique constraint", () => {
     const input = `
       create table t1(
