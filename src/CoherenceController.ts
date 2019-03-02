@@ -1,4 +1,4 @@
-import { Ast, AstColumn, AstTable, AstTableConstraintComposition, AstTableEntry } from "./ast"
+import { Ast, AstColumn, AstCreateTable, AstTableConstraintComposition, AstTableEntry } from "./ast"
 
 export interface ControlResult {
   valid: boolean
@@ -13,7 +13,7 @@ export default class CoherenceController {
   }
 }
 
-function getTableConstraintNames(table: AstTable) {
+function getTableConstraintNames(table: AstCreateTable) {
   const constraintNames = new Set<string>()
   const errors: string[] = []
 
@@ -29,7 +29,7 @@ function getTableConstraintNames(table: AstTable) {
   return { constraintNames, errors }
 }
 
-function getTableColumnNames(table: AstTable) {
+function getTableColumnNames(table: AstCreateTable) {
   const columnNames = new Set<string>()
   const errors: string[] = []
 
@@ -45,7 +45,7 @@ function getTableColumnNames(table: AstTable) {
   return { columnNames, errors }
 }
 
-function checkTable(table: AstTable): ControlResult {
+function checkTable(table: AstCreateTable): ControlResult {
   const constraintCompositions: AstTableConstraintComposition[] = []
   const columns: AstColumn[] = []
 

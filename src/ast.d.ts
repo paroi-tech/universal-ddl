@@ -2,9 +2,9 @@ export interface Ast {
   orders: AstOrder[]
 }
 
-export type AstOrder = AstTable | AstAlterTable | AstCreateIndex
+export type AstOrder = AstCreateTable | AstAlterTable | AstCreateIndex
 
-export interface AstTable extends AstCommentable {
+export interface AstCreateTable extends AstCommentable {
   orderType: "createTable"
   name: string
   entries: AstTableEntry[]
@@ -69,7 +69,7 @@ export type AstDataType = "int" | "integer" | "bigint" | "smallint" | "real" | "
   "timestamp" | "text" | "char" | "varchar" | "decimal" | "numeric" | "float"
 
 export interface AstValue {
-  type: "sql" | "string" | "int" | "float"
+  type: "sqlExpr" | "string" | "int" | "float"
   value: string | number
 }
 
@@ -78,10 +78,16 @@ export interface AstColumnConstraintComposition {
   constraints: AstColumnConstraint[]
 }
 
-export type AstColumnConstraint = AstNotNullColumnConstraint | AstDefaultColumnConstraint | AstPrimaryKeyColumnConstraint | AstUniqueColumnConstraint | AstForeignKeyColumnConstraint | AstAutoIncrementColumnConstraint
+export type AstColumnConstraint = AstNotNullColumnConstraint | AstNullColumnConstraint | AstDefaultColumnConstraint |
+  AstPrimaryKeyColumnConstraint | AstUniqueColumnConstraint | AstForeignKeyColumnConstraint |
+  AstAutoIncrementColumnConstraint
 
 export interface AstNotNullColumnConstraint {
   constraintType: "notNull"
+}
+
+export interface AstNullColumnConstraint {
+  constraintType: "null"
 }
 
 export interface AstDefaultColumnConstraint {

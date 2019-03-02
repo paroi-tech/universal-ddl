@@ -2,7 +2,7 @@ const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
 import {
   Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCommentable, AstCreateIndex,
-  AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTable, AstTableConstraintComposition, AstTableEntry, AstValue
+  AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTableConstraintComposition, AstTableEntry, AstValue
 } from "./ast"
 import CommentAnnotator from "./CommentAnnotator"
 
@@ -41,7 +41,7 @@ export default class DdlExtractor extends UniversalDdlListener {
   }
 
   exitTableDef(ctx) {
-    const table: AstTable = {
+    const table: AstCreateTable = {
       orderType: "createTable",
       name: getIdentifierText(ctx.tableName),
       entries: this.currentEntries!
@@ -163,6 +163,8 @@ export default class DdlExtractor extends UniversalDdlListener {
           composition.constraints.push(fkConstraint)
           break
         case "defaultSpec":
+          if (!childCtx.children[1])
+            throw new Error("Missing default value")
           composition.constraints.push({
             constraintType: "default",
             value: buildDefaultValue(childCtx.children[1])
@@ -217,7 +219,7 @@ function buildDefaultValue(node): AstValue {
     case "KW_CURRENT_TIME":
     case "KW_CURRENT_TS":
       return {
-        type: "sql",
+        type: "sqlExpr",
         value: node.getText()
       }
     default:

@@ -12,9 +12,10 @@ export function parseDdl(source: string): Ast {
 
   parser.buildParseTrees = true
   parser.removeErrorListeners()
+  const errors: string[] = []
   parser.addErrorListener({
     syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
-      throw new Error(`Syntax error at line ${line}:${column}, ${msg}`)
+      errors.push(`Syntax error at line ${line}:${column}, ${msg}`)
     }
   })
 
@@ -30,6 +31,9 @@ export function parseDdl(source: string): Ast {
     }
   })
   ParseTreeWalker.DEFAULT.walk(extractor, tree)
+
+  if (errors.length > 0)
+    throw new Error(errors.join("\n"))
 
   return extractor.ast!
 }

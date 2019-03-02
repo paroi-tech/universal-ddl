@@ -11,11 +11,12 @@ export default class CommentAnnotator {
    * @param ruleContext An instance of `RuleContext`.
    */
   appendCommentsTo(astNode: AstCommentable, ruleContext: any) {
-    const { tokenStream } = this.parsingContext
+    const { tokenStream, tokenTypes: { COMMA, COMMENT, NEWLINE } } = this.parsingContext
 
     // Block Comments
     const blockComments: any[] = []
-    this.addCommentTokensTo(blockComments, tokenStream.getHiddenTokensToLeft(ruleContext.start.tokenIndex, 1))
+    const leftTokens = tokenStream.getHiddenTokensToLeft(ruleContext.start.tokenIndex, 1)
+    this.addCommentTokensTo(blockComments, this.lastWholeLineComments(leftTokens))
 
     const blockComment = this.commentTokensToString(blockComments)
     if (blockComment)
@@ -25,14 +26,38 @@ export default class CommentAnnotator {
     const inlineComments: any[] = []
 
     const stopIndex = this.getStopTokenIndexOf(ruleContext)
-    for (let i = ruleContext.start.tokenIndex; i < stopIndex; ++i)
-      this.addCommentTokensTo(inlineComments, tokenStream.getHiddenTokensToRight(i, 1))
+    for (let i = ruleContext.start.tokenIndex; i < stopIndex; ++i) {
+      const tokenType = tokenStream.tokens[i].type
+      if (tokenType !== COMMA && tokenType !== COMMENT && tokenType !== NEWLINE)
+        this.addCommentTokensTo(inlineComments, tokenStream.getHiddenTokensToRight(i, 1))
+    }
 
     this.addLastInlineCommentTokensTo(inlineComments, tokenStream.getHiddenTokensToRight(stopIndex, 1))
 
     const inlineComment = this.commentTokensToString(inlineComments)
     if (inlineComment)
       astNode.inlineComment = inlineComment
+  }
+
+  private lastWholeLineComments(leftTokens: any[] | null) {
+    if (!leftTokens)
+      return null
+    const { tokenTypes: { COMMENT, NEWLINE } } = this.parsingContext
+    leftTokens = leftTokens.filter(token => (token.type === COMMENT || token.type === NEWLINE) && !this.consumed.has(token))
+    const reversedComments: any[] = []
+    let currentComment: any | null
+    for (let i = leftTokens.length - 1; i >= 0; --i) {
+      const token = leftTokens[i]
+      if (token.type === COMMENT)
+        currentComment = token
+      else if (token.type === NEWLINE) {
+        if (currentComment) {
+          reversedComments.push(currentComment)
+          currentComment = undefined
+        }
+      }
+    }
+    return reversedComments.length === 0 ? null : reversedComments.reverse()
   }
 
   private addCommentTokensTo(target: any[], tokens: any[] | null) {
