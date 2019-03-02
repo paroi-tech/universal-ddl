@@ -4,60 +4,60 @@ export interface Ast {
 
 export type AstOrder = AstTable | AstAlterTable | AstCreateIndex
 
-export interface AstTable {
+export interface AstTable extends AstCommentable {
   orderType: "createTable"
   name: string
   entries: AstTableEntry[]
 }
 
-export interface AstAlterTable {
+export interface AstAlterTable extends AstCommentable {
   orderType: "alterTable"
   table: string
   add: AstTableEntry[]
 }
 
-export interface AstCreateIndex {
+export interface AstCreateIndex extends AstCommentable {
   orderType: "createIndex"
   table: string
   name?: string
-  index: AstIndex | AstUniqueConstraint
+  index: AstIndex | AstUniqueTableConstraint
 }
 
 export type AstTableEntry = AstColumn | AstTableConstraintComposition
 
-export interface AstTableConstraintComposition {
+export interface AstTableConstraintComposition extends AstCommentable {
   entryType: "constraintComposition"
   name?: string
   constraints: AstTableConstraint[]
 }
 
-export type AstTableConstraint = AstPrimaryKeyConstraint | AstForeignKeyConstraint | AstUniqueConstraint
+export type AstTableConstraint = AstPrimaryKeyTableConstraint | AstForeignKeyTableConstraint | AstUniqueTableConstraint
 
-export interface AstPrimaryKeyConstraint {
+export interface AstPrimaryKeyTableConstraint extends AstCommentable {
   constraintType: "primaryKey"
   columns: string[]
 }
 
-export interface AstForeignKeyConstraint {
+export interface AstForeignKeyTableConstraint extends AstCommentable {
   constraintType: "foreignKey"
   columns: string[]
   referencedTable: string
   referencedColumns?: string[]
-  onDelete?: foreignKeyAction
-  onUpdate?: foreignKeyAction
+  onDelete?: AstForeignKeyAction
+  onUpdate?: AstForeignKeyAction
 }
 
-export type foreignKeyAction = "cascade" | "restrict" | "noAction"
+export type AstForeignKeyAction = "cascade" | "restrict" | "noAction"
 
-export interface AstIndex {
+export interface AstIndex extends AstCommentable {
   columns: string[]
 }
 
-export interface AstUniqueConstraint extends AstIndex {
+export interface AstUniqueTableConstraint extends AstIndex {
   constraintType: "unique"
 }
 
-export interface AstColumn {
+export interface AstColumn extends AstCommentable {
   entryType: "column"
   name: string
   type: AstDataType
@@ -105,6 +105,11 @@ export interface AstForeignKeyColumnConstraint {
   constraintType: "foreignKey"
   referencedTable: string
   referencedColumn?: string
-  onDelete?: foreignKeyAction
-  onUpdate?: foreignKeyAction
+  onDelete?: AstForeignKeyAction
+  onUpdate?: AstForeignKeyAction
+}
+
+export interface AstCommentable {
+  blockComment?: string
+  inlineComment?: string
 }

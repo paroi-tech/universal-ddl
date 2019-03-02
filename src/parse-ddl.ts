@@ -4,10 +4,11 @@ const { UniversalDdlParser } = require("../parser/UniversalDdlParser")
 import { Ast } from "./ast"
 import DdlExtractor from "./DdlExtractor"
 
-export function parseDdl(ddl: string): Ast {
-  const chars = new InputStream(ddl)
+export function parseDdl(source: string): Ast {
+  const chars = new InputStream(source)
   const lexer = new UniversalDdlLexer(chars)
   const tokens = new CommonTokenStream(lexer)
+  // console.log(tokens.tokenSource)
   const parser = new UniversalDdlParser(tokens)
 
   parser.buildParseTrees = true
@@ -20,7 +21,15 @@ export function parseDdl(ddl: string): Ast {
 
   const tree = parser.script()
 
-  const extractor = new DdlExtractor()
+  const extractor = new DdlExtractor({
+    source,
+    tokenStream: tokens,
+    tokensType: {
+      COMMA: UniversalDdlParser.COMMA,
+      COMMENT: UniversalDdlParser.COMMENT,
+      NEWLINE: UniversalDdlParser.NEWLINE,
+    }
+  })
   ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
   return extractor.ast!

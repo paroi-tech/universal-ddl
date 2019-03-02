@@ -268,6 +268,11 @@ KW_UNIQUE : UNIQUE ;
 IDENTIFIER : LETTER ( LETTER | UNDERSCORE | DIGIT )* ;
 
 /*
- * Whitespace
+ * Whitespaces and comments
  */
-WS : ( ' ' | '\t' | ( '\r'? '\n' | '\r' ) ) -> skip ;
+
+NEWLINE: ( '\r'? '\n' | '\r' ) -> channel(HIDDEN) ;
+COMMENT : '-- ' ~[\r\n]* -> channel(HIDDEN) ;
+
+WS : [ \t\f]+ -> channel(HIDDEN) ;
+/* WS : ( ' ' | '\t' | ( '\r'? '\n' | '\r' ) ) -> skip ; */
