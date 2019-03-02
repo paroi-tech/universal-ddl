@@ -8,7 +8,6 @@ export function parseDdl(source: string): Ast {
   const chars = new InputStream(source)
   const lexer = new UniversalDdlLexer(chars)
   const tokens = new CommonTokenStream(lexer)
-  // console.log(tokens.tokenSource)
   const parser = new UniversalDdlParser(tokens)
 
   parser.buildParseTrees = true
