@@ -24,7 +24,7 @@ export function parseDdl(source: string): Ast {
   const extractor = new DdlExtractor({
     source,
     tokenStream: tokens,
-    tokensType: {
+    tokenTypes: {
       COMMA: UniversalDdlParser.COMMA,
       COMMENT: UniversalDdlParser.COMMENT,
       NEWLINE: UniversalDdlParser.NEWLINE,

@@ -4,40 +4,34 @@ import {
   Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCommentable, AstCreateIndex,
   AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTable, AstTableConstraintComposition, AstTableEntry, AstValue
 } from "./ast"
+import CommentAnnotator from "./CommentAnnotator"
 import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
-export interface DdlExtractorOptions {
+export interface DdlParsingContext {
   source: string
   /**
    * Of type `CommonTokenStream`.
    */
   tokenStream: any
-  tokensType: {
+  tokenTypes: {
     COMMA: number
     COMMENT: number
     NEWLINE: number
   }
 }
 
-export interface DdlParsingContext extends DdlExtractorOptions {
-  consumedCommentTokens: Set<any>
-}
-
 export default class DdlExtractor extends UniversalDdlListener {
   ast?: Ast
-  private parsingContext: DdlParsingContext
   private currentEntries?: AstTableEntry[]
   private currentColumn?: AstColumn
+  private comments?: CommentAnnotator
 
-  constructor(options: DdlExtractorOptions) {
+  constructor(private parsingContext: DdlParsingContext) {
     super()
-    this.parsingContext = {
-      ...options,
-      consumedCommentTokens: new Set()
-    }
   }
 
   enterScript() {
+    this.comments = new CommentAnnotator(this.parsingContext)
     this.ast = {
       orders: []
     }
@@ -53,7 +47,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       name: getIdentifierText(ctx.tableName),
       entries: this.currentEntries!
     }
-    appendCommentsTo(table, this.parsingContext, ctx)
+    this.comments!.appendCommentsTo(table, ctx)
     this.ast!.orders.push(table)
     this.currentEntries = undefined
   }
@@ -68,7 +62,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       table: getIdentifierText(ctx.tableName),
       add: this.currentEntries!
     }
-    appendCommentsTo(alterTable, this.parsingContext, ctx)
+    this.comments!.appendCommentsTo(alterTable, ctx)
     this.ast!.orders.push(alterTable)
     this.currentEntries = undefined
   }
@@ -85,7 +79,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       table: getIdentifierText(ctx.tableName),
       index
     }
-    appendCommentsTo(order, this.parsingContext, ctx)
+    this.comments!.appendCommentsTo(order, ctx)
     if (ctx.indexName)
       order.name = getIdentifierText(ctx.indexName)
     this.ast!.orders.push(order)
@@ -100,7 +94,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       type: typeCtx.children[0].getText(),
     }
 
-    appendCommentsTo(column, this.parsingContext, ctx)
+    this.comments!.appendCommentsTo(column, ctx)
 
     if (typeCtx.children.length > 1 && "UINT_LITERAL" in typeCtx) {
       const params = typeCtx.UINT_LITERAL()
@@ -184,19 +178,19 @@ export default class DdlExtractor extends UniversalDdlListener {
 
   enterTableUniqueConstraintDef(ctx) {
     this.currentEntries!.push(
-      buildTableUniqueConstraint(this.parsingContext, ctx.uniqueConstraintDef())
+      buildTableUniqueConstraint(ctx.uniqueConstraintDef(), this.comments!)
     )
   }
 
   enterTablePrimaryKeyConstraintDef(ctx) {
     this.currentEntries!.push(
-      buildTablePrimaryKeyConstraint(this.parsingContext, ctx.primaryKeyConstraintDef())
+      buildTablePrimaryKeyConstraint(ctx.primaryKeyConstraintDef(), this.comments!)
     )
   }
 
   enterTableForeignKeyConstraintDef(ctx) {
     this.currentEntries!.push(
-      buildTableForeignKeyConstraint(this.parsingContext, ctx.foreignKeyConstraintDef())
+      buildTableForeignKeyConstraint(ctx.foreignKeyConstraintDef(), this.comments!)
     )
   }
 }
@@ -232,7 +226,7 @@ function buildDefaultValue(node): AstValue {
   }
 }
 
-function buildTableUniqueConstraint(parsingContext: DdlParsingContext, ctx): AstTableConstraintComposition {
+function buildTableUniqueConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
   const composition: AstTableConstraintComposition = {
     entryType: "constraintComposition",
     constraints: [{
@@ -242,11 +236,11 @@ function buildTableUniqueConstraint(parsingContext: DdlParsingContext, ctx): Ast
   }
   if (ctx.constraintName)
     composition.name = getIdentifierText(ctx.constraintName)
-  appendCommentsTo(composition, parsingContext, ctx)
+  comments.appendCommentsTo(composition, ctx)
   return composition
 }
 
-function buildTablePrimaryKeyConstraint(parsingContext: DdlParsingContext, ctx): AstTableConstraintComposition {
+function buildTablePrimaryKeyConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
   const composition: AstTableConstraintComposition = {
     entryType: "constraintComposition",
     constraints: [{
@@ -256,11 +250,11 @@ function buildTablePrimaryKeyConstraint(parsingContext: DdlParsingContext, ctx):
   }
   if (ctx.constraintName)
     composition.name = getIdentifierText(ctx.constraintName)
-  appendCommentsTo(composition, parsingContext, ctx)
+  comments.appendCommentsTo(composition, ctx)
   return composition
 }
 
-function buildTableForeignKeyConstraint(parsingContext: DdlParsingContext, ctx): AstTableConstraintComposition {
+function buildTableForeignKeyConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
   const fkConstraint: AstForeignKeyTableConstraint = {
     constraintType: "foreignKey",
     columns: getIdListItemTexts(ctx.columns),
@@ -276,72 +270,6 @@ function buildTableForeignKeyConstraint(parsingContext: DdlParsingContext, ctx):
     composition.name = getIdentifierText(ctx.constraintName)
   if (ctx.onDelete && ctx.onDelete.KW_CASCADE())
     fkConstraint.onDelete = "cascade"
-  appendCommentsTo(composition, parsingContext, ctx)
+  comments.appendCommentsTo(composition, ctx)
   return composition
-}
-
-// function debugTokensToText(tokens, parsingContext) {
-//   if (!tokens)
-//     return "-no-tokens-"
-//   return tokens.map(({ tokenIndex, type, start, stop }) => {
-//     return `[${tokenIndex}] ${type}: ${parsingContext.source.substring(start, stop + 1).replace("\n", "\\n")}`
-//   }).join("\n")
-// }
-
-/**
- * @param ruleContext An instance of `RuleContext`.
- */
-function appendCommentsTo(astNode: AstCommentable, parsingContext: DdlParsingContext, ruleContext: any) {
-  const { COMMA, COMMENT, NEWLINE } = parsingContext.tokensType
-  const consumed = parsingContext.consumedCommentTokens
-
-  let tokens: any[] = parsingContext.tokenStream
-    .getHiddenTokensToLeft(ruleContext.start.tokenIndex, 1)
-  if (tokens) {
-    tokens = tokens.filter(token => token.type === COMMENT && !consumed.has(token))
-    for (const tok of tokens)
-      consumed.add(tok)
-  }
-  const blockComments = tokens || []
-
-  const inlineComments: any[] = []
-  const tokenAfter = parsingContext.tokenStream.tokens[ruleContext.stop.tokenIndex + 1]
-  let stopIndex = ruleContext.stop.tokenIndex
-  if (tokenAfter && tokenAfter.type === COMMA)
-    ++stopIndex
-  for (let i = ruleContext.start.tokenIndex; i < stopIndex; ++i) {
-    let tokens = parsingContext.tokenStream.getHiddenTokensToRight(i, 1)
-    if (tokens) {
-      tokens = tokens.filter(token => token.type === COMMENT && !consumed.has(token))
-      inlineComments.push(...tokens)
-      for (const tok of tokens)
-        consumed.add(tok)
-    }
-  }
-  const lastTokens = parsingContext.tokenStream.getHiddenTokensToRight(stopIndex, 1)
-  if (lastTokens) {
-    const lastToken = lastTokens.find(token => (token.type === COMMENT && !consumed.has(token)) || token.type === NEWLINE)
-    if (lastToken && lastToken.type === COMMENT) {
-      inlineComments.push(lastToken)
-      consumed.add(lastToken)
-    }
-  }
-
-  if (blockComments.length > 0) {
-    const com = blockComments
-      .map(({ start, stop }) => parsingContext.source.substring(start + 3, stop + 1).trimRight())
-      .filter(com => com.length > 0)
-      .join("\n")
-    if (com)
-      astNode.blockComment = com
-  }
-
-  if (inlineComments.length > 0) {
-    const com = inlineComments
-      .map(({ start, stop }) => parsingContext.source.substring(start + 3, stop + 1).trim())
-      .filter(com => com.length > 0)
-      .join("\n")
-    if (com)
-      astNode.inlineComment = com
-  }
 }
