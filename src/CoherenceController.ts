@@ -1,8 +1,16 @@
-import { Ast, AstTable } from "./ast"
+import { Ast, AstColumn, AstTable, AstTableConstraintComposition, AstTableEntry } from "./ast"
 
 export interface ControlResult {
   valid: boolean
   errors?: string[]
+}
+
+export default class CoherenceController {
+  control(ast: Ast): ControlResult {
+    return {
+      valid: true
+    }
+  }
 }
 
 function getTableConstraintNames(table: AstTable) {
@@ -37,43 +45,52 @@ function getTableColumnNames(table: AstTable) {
   return { columnNames, errors }
 }
 
-export default class CoherenceController {
-  control(ast: Ast): ControlResult {
+function checkTable(table: AstTable): ControlResult {
+  const constraintCompositions: AstTableConstraintComposition[] = []
+  const columns: AstColumn[] = []
+
+  for (const entry of table.entries) {
+    if (entry.entryType === "column")
+      columns.push(entry)
+    else
+      constraintCompositions.push(entry)
+  }
+
+  const columnObj = getTableColumnNames(table)
+  const constraintObj = getTableConstraintNames(table)
+
+  if (columnObj.errors.length > 0 || constraintObj.errors.length > 0) {
     return {
-      valid: true
+      valid: false,
+      errors: columnObj.errors.concat(constraintObj.errors)
     }
   }
 
-  private checkTable(table: AstTable): ControlResult {
-    const columnObj = getTableColumnNames(table)
-    const constraintObj = getTableConstraintNames(table)
+  const columnNames = columnObj.columnNames
+  const constraintNames = constraintObj.constraintNames
+  const errors: string[] = []
 
-    if (columnObj.errors.length > 0 || constraintObj.errors.length > 0) {
-      return {
-        valid: false,
-        errors: columnObj.errors.concat(constraintObj.errors)
-      }
-    }
+  for (const name of columnNames) {
+    if (constraintNames.has(name))
+      errors.push(`${name} is used as column name and constraint name in table ${table.name}`)
+  }
 
-    const columnNames = columnObj.columnNames
-    const constraintNames = constraintObj.constraintNames
-    const intersection = []
-    const errors: string[] = []
-
-    for (const name of columnNames) {
-      if (constraintNames.has(name))
-        errors.push(`${name} is used as column name and constraint name in table ${table.name}`)
-    }
-
-    if (errors.length > 0) {
-      return {
-        valid: false,
-        errors
-      }
-    }
-
+  if (errors.length > 0) {
     return {
-      valid: true
+      valid: false,
+      errors
     }
   }
+
+  for (const composition of constraintCompositions) {
+    const constraintName = composition.name || "<Unamed>"
+    for (const constraint of composition.constraints) {
+      for (const name of constraint.columns) {
+        if (!columnNames.has(name))
+          errors.push(`Column ${name} used in constraint ${constraintName} does not exist in table ${table.name}`)
+      }
+    }
+  }
+
+  return { valid: true }
 }

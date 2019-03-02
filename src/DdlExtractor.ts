@@ -5,7 +5,6 @@ import {
   AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTable, AstTableConstraintComposition, AstTableEntry, AstValue
 } from "./ast"
 import CommentAnnotator from "./CommentAnnotator"
-import { getIdentifierText, getIdListItemTexts } from "./ddl-extractor-utils"
 
 export interface DdlParsingContext {
   source: string
@@ -272,4 +271,17 @@ function buildTableForeignKeyConstraint(ctx, comments: CommentAnnotator): AstTab
     fkConstraint.onDelete = "cascade"
   comments.appendCommentsTo(composition, ctx)
   return composition
+}
+
+function getIdentifierText(idCtx) {
+  return idCtx.IDENTIFIER().getText()
+}
+
+function getIdListItemTexts(idListCtx) {
+  const list: any[] = []
+  for (const idCtx of idListCtx.id()) {
+    const text = getIdentifierText(idCtx)
+    list.push(text)
+  }
+  return list
 }
