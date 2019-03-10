@@ -29,7 +29,7 @@ export interface RdsColumn extends RdsCommentable {
 export interface RdsColumnContraints {
   notNull?: boolean
   primaryKey?: boolean
-  autoIncrement?: boolean
+  autoincrement?: boolean
   unique?: boolean
   references?: RdsForeignKeyColumnConstraint[]
   default?: RdsValue
@@ -82,5 +82,5 @@ export interface RdsForeignKeyTableConstraint extends RdsCommentable {
 
 export interface RdsCommentable {
   blockComment?: string
-  inlineComment?: string
+  inlineComment?: string | string[]
 }

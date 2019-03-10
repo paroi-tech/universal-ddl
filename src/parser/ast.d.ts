@@ -4,6 +4,8 @@ export interface Ast {
 
 export type AstOrder = AstCreateTable | AstAlterTable | AstCreateIndex
 
+export type AstOrderType = AstOrder["orderType"]
+
 export interface AstCreateTable extends AstCommentable {
   orderType: "createTable"
   name: string
@@ -25,6 +27,8 @@ export interface AstCreateIndex extends AstCommentable {
 
 export type AstTableEntry = AstColumn | AstTableConstraintComposition
 
+export type AstTableEntryType = AstTableEntry["entryType"]
+
 export interface AstTableConstraintComposition extends AstCommentable {
   entryType: "constraintComposition"
   name?: string
@@ -32,6 +36,8 @@ export interface AstTableConstraintComposition extends AstCommentable {
 }
 
 export type AstTableConstraint = AstPrimaryKeyTableConstraint | AstForeignKeyTableConstraint | AstUniqueTableConstraint
+
+export type AstTableConstraintType = AstTableConstraint["constraintType"]
 
 export interface AstPrimaryKeyTableConstraint extends AstCommentable {
   constraintType: "primaryKey"
@@ -65,8 +71,9 @@ export interface AstColumn extends AstCommentable {
   constraintCompositions?: AstColumnConstraintComposition[]
 }
 
-export type AstDataType = "int" | "integer" | "bigint" | "smallint" | "real" | "date" | "time" | "datetime" |
-  "timestamp" | "text" | "char" | "varchar" | "decimal" | "numeric" | "float"
+export type AstDataType = "int" | "integer" | "bigint" | "smallint" | "tinyint"
+  | "real" | "decimal" | "numeric" | "float"
+  | "date" | "time" | "datetime" | "timestamp" | "text" | "char" | "varchar"
 
 export interface AstValue {
   type: "sqlExpr" | "string" | "int" | "float"
@@ -80,7 +87,9 @@ export interface AstColumnConstraintComposition {
 
 export type AstColumnConstraint = AstNotNullColumnConstraint | AstNullColumnConstraint | AstDefaultColumnConstraint |
   AstPrimaryKeyColumnConstraint | AstUniqueColumnConstraint | AstForeignKeyColumnConstraint |
-  AstAutoIncrementColumnConstraint
+  AstAutoincrementColumnConstraint
+
+export type AstColumnConstraintType = AstColumnConstraint["constraintType"]
 
 export interface AstNotNullColumnConstraint {
   constraintType: "notNull"
@@ -95,8 +104,8 @@ export interface AstDefaultColumnConstraint {
   value: AstValue
 }
 
-export interface AstAutoIncrementColumnConstraint {
-  constraintType: "autoIncrement"
+export interface AstAutoincrementColumnConstraint {
+  constraintType: "autoincrement"
 }
 
 export interface AstPrimaryKeyColumnConstraint {
@@ -116,6 +125,9 @@ export interface AstForeignKeyColumnConstraint {
 }
 
 export interface AstCommentable {
+  /**
+   * A multilines string.
+   */
   blockComment?: string
-  inlineComment?: string
+  inlineComment?: string | string[]
 }

@@ -31,7 +31,7 @@ alter table foo add
 alter table foo add column bob int default 0 primary key; -- jojo
 
 create table t2 (
-  a integer not null autoincrement primary key,
+  a bigint not null primary key autoincrement,
   b varchar(255) not null
 );
 `
@@ -39,7 +39,13 @@ const ast = parseDdl(input, { freeze: true })
 console.log(JSON.stringify(ast, undefined, 2))
 
 console.log("\n\n-------- Universal DDL --------")
-console.log(generateDdl("UniversalDdl", ast))
+console.log(generateDdl("universalddl", ast))
 
 console.log("\n\n-------- Postgresql DDL --------")
-console.log(generateDdl("Postgresql", ast))
+console.log(generateDdl("postgresql", ast))
+
+console.log("\n\n-------- SQLite DDL --------")
+console.log(generateDdl("sqlite", ast))
+
+console.log("\n\n-------- Mariadb DDL --------")
+console.log(generateDdl("mariadb", ast))

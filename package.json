@@ -1,17 +1,13 @@
 {
-  "name": "universal-ddl",
+  "name": "@tomko/universal-ddl",
   "private": true,
   "author": "tomko.team",
   "scripts": {
-    "antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o parser",
-    "java-antlr4": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool UniversalDdl.g4 -o java-parser",
-    "java-compile": "javac -cp \"antlr-4.7.2-complete.jar\" java-parser/UniversalDdl*.java",
-    "java-build": "npm run java-antlr4 && npm run java-compile",
-    "java-test": "java -cp \"antlr-4.7.2-complete.jar:./java-parser\" org.antlr.v4.gui.TestRig UniversalDdl tableDef -tokens",
-    "clear": "rimraf 'dist/*' 'parser/*'",
+    "antlr": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o antlr-parser",
+    "clear": "rimraf 'dist/*' 'antlr-parser/*'",
     "tsc": "tsc",
     "tsc:watch": "tsc --watch",
-    "build": "npm run clear && npm run antlr4 && npm run tsc",
+    "build": "npm run clear && npm run antlr && npm run tsc",
     "lint": "tslint -p tsconfig.json -t verbose",
     "test": "jest --watch"
   },
@@ -20,16 +16,21 @@
     "url": "git+https://github.com/paleo/universal-ddl.git"
   },
   "dependencies": {
-    "antlr4": "^4.7.2"
+    "antlr4": "^4.7.2",
+    "command-line-args": "^5.0.2",
+    "command-line-usage": "^5.0.5"
   },
   "devDependencies": {
-    "@types/jest": "^23.3.14",
-    "@types/node": "^10.12.26",
-    "jest": "^23.6.0",
+    "@types/command-line-args": "^5.0.0",
+    "@types/command-line-usage": "^5.0.1",
+    "@types/jest": "^24.0.11",
+    "@types/node": "^10.14.1",
+    "jest": "^24.5.0",
     "rimraf": "^2.6.3",
-    "ts-jest": "^23.10.5",
-    "tslint": "^5.12.1",
-    "typescript": "^3.3.3"
+    "ts-jest": "^24.0.0",
+    "tslint": "^5.14.0",
+    "typescript": "^3.3.3333"
   },
-  "main": "dist/index.js"
+  "main": "dist/index.js",
+  "bin": "./dist/cli.js"
 }

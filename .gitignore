@@ -1,7 +1,5 @@
 node_modules
 /.antlr
-
 /antlr-*.jar
-/parser
-/java-parser
+/antlr-parser
 /dist

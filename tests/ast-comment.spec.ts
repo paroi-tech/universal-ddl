@@ -1,5 +1,5 @@
-import { AstTable } from "../src/ast"
-import { parseDdl } from "../src/parse-ddl"
+import { AstCreateTable } from "../src/parser/ast"
+import { parseDdlToAst } from "../src/parser/parse-ddl"
 
 describe("AST Specification for comments", () => {
 
@@ -9,8 +9,8 @@ describe("AST Specification for comments", () => {
         a integer
       ); -- comment on t1 #2
       `
-    const table = parseDdl(input).orders[0] as AstTable
-    expect(table.inlineComment).toEqual("comment on t1 #1\ncomment on t1 #2")
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
+    expect(table.inlineComment).toEqual(["comment on t1 #1", "comment on t1 #2"])
   })
 
   test("block comments on table", () => {
@@ -21,7 +21,7 @@ describe("AST Specification for comments", () => {
         a integer
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.blockComment).toEqual("comment on t1 #1\ncomment on t1 #2")
   })
 
@@ -34,9 +34,9 @@ describe("AST Specification for comments", () => {
         integer -- comment on b #2
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
-    expect(table.entries[0].inlineComment).toEqual("comment on a #1\ncomment on a #2")
-    expect(table.entries[1].inlineComment).toEqual("comment on b #1\ncomment on b #2")
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
+    expect(table.entries[0].inlineComment).toEqual(["comment on a #1", "comment on a #2"])
+    expect(table.entries[1].inlineComment).toEqual(["comment on b #1", "comment on b #2"])
   })
 
   test("block comments on column", () => {
@@ -47,7 +47,7 @@ describe("AST Specification for comments", () => {
         a integer
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[0].blockComment).toEqual("comment on a #1\ncomment on a #2")
   })
 })

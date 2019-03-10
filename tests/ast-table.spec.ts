@@ -1,12 +1,12 @@
-import { AstAlterTable, AstCreateIndex, AstTable, AstTableConstraintComposition } from "../src/ast"
-import { parseDdl } from "../src/parse-ddl"
+import { AstAlterTable, AstCreateIndex, AstCreateTable, AstTableConstraintComposition } from "../src/parser/ast"
+import { parseDdlToAst } from "../src/parser/parse-ddl"
 
 describe("AST Specification for tables", () => {
   test("a table must include at least one column", () => {
     const input = `
       create table t1();
       `
-    expect(() => parseDdl(input)).toThrow()
+    expect(() => parseDdlToAst(input)).toThrow()
   })
 
   test("semicolon is required", () => {
@@ -15,7 +15,7 @@ describe("AST Specification for tables", () => {
         a varchar(50)
       )
       `
-    expect(() => parseDdl(input)).toThrow()
+    expect(() => parseDdlToAst(input)).toThrow()
   })
 
   test("returns tables in the correct order", () => {
@@ -30,7 +30,7 @@ describe("AST Specification for tables", () => {
         a integer
       );
       `
-    const tables = parseDdl(input).orders as AstTable[]
+    const tables = parseDdlToAst(input).orders as AstCreateTable[]
     expect(tables.map(order => order.name)).toEqual(["t1", "t2", "t3"])
   })
 
@@ -41,7 +41,7 @@ describe("AST Specification for tables", () => {
         primary key (a, b)
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       constraints: [{
@@ -58,7 +58,7 @@ describe("AST Specification for tables", () => {
         foreign key (a, b) references other_table (c, d)
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       constraints: [{
@@ -77,7 +77,7 @@ describe("AST Specification for tables", () => {
         constraint fk1 foreign key (a, b) references other_table (c, d)
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       name: "fk1",
@@ -97,7 +97,7 @@ describe("AST Specification for tables", () => {
         constraint fk1 foreign key (a, b) references other_table (c, d) on delete cascade
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       name: "fk1",
@@ -118,7 +118,7 @@ describe("AST Specification for tables", () => {
         unique (a, b)
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       constraints: [{
@@ -135,7 +135,7 @@ describe("AST Specification for tables", () => {
         constraint u1 unique (a, b)
       );
       `
-    const table = parseDdl(input).orders[0] as AstTable
+    const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
       entryType: "constraintComposition",
       name: "u1",
@@ -150,7 +150,7 @@ describe("AST Specification for tables", () => {
     const input = `
       alter table t1 add foreign key (a, b) references t2(c, d);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "alterTable",
       table: "t1",
@@ -170,7 +170,7 @@ describe("AST Specification for tables", () => {
     const input = `
       alter table t1 add constraint fk1 foreign key (a, b) references t2(c, d);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "alterTable",
       table: "t1",
@@ -191,7 +191,7 @@ describe("AST Specification for tables", () => {
     const input = `
       create index idx1 on t1 (a, b);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "createIndex",
       table: "t1",
@@ -206,7 +206,7 @@ describe("AST Specification for tables", () => {
     const input = `
       create unique index u1 on t1 (a, b);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "createIndex",
       table: "t1",
@@ -222,7 +222,7 @@ describe("AST Specification for tables", () => {
     const input = `
       alter table t1 add unique (a, b);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "alterTable",
       table: "t1",
@@ -240,7 +240,7 @@ describe("AST Specification for tables", () => {
     const input = `
       alter table t1 add constraint u1 unique (a, b);
       `
-    const ast = parseDdl(input)
+    const ast = parseDdlToAst(input)
     expect(ast.orders[0]).toEqual({
       orderType: "alterTable",
       table: "t1",

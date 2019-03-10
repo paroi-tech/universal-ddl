@@ -18,7 +18,7 @@ export default class CommentAnnotator {
     const leftTokens = tokenStream.getHiddenTokensToLeft(ruleContext.start.tokenIndex, 1)
     this.addCommentTokensTo(blockComments, this.lastWholeLineComments(leftTokens))
 
-    const blockComment = this.commentTokensToString(blockComments)
+    const blockComment = this.blockCommentTokensToString(blockComments)
     if (blockComment)
       astNode.blockComment = blockComment
 
@@ -34,7 +34,7 @@ export default class CommentAnnotator {
 
     this.addLastInlineCommentTokensTo(inlineComments, tokenStream.getHiddenTokensToRight(stopIndex, 1))
 
-    const inlineComment = this.commentTokensToString(inlineComments)
+    const inlineComment = this.inlineCommentTokensToString(inlineComments)
     if (inlineComment)
       astNode.inlineComment = inlineComment
   }
@@ -90,7 +90,7 @@ export default class CommentAnnotator {
     return stopIndex
   }
 
-  private commentTokensToString(tokens: any[]): string | undefined {
+  private blockCommentTokensToString(tokens: any[]): string | undefined {
     if (tokens.length === 0)
       return
     const { source } = this.parsingContext
@@ -99,6 +99,16 @@ export default class CommentAnnotator {
       .filter(com => com.length > 0)
       .join("\n")
     return com || undefined
+  }
+
+  private inlineCommentTokensToString(tokens: any[]): string | string[] | undefined {
+    if (tokens.length === 0)
+      return
+    const { source } = this.parsingContext
+    const com = tokens
+      .map(({ start, stop }) => source.substring(start + 3, stop + 1).trim())
+      .filter(com => com.length > 0)
+    return com.length > 0 ? com : undefined
   }
 }
 

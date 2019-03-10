@@ -1,7 +1,7 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyTableConstraint, AstCreateTable, AstTableConstraintComposition, AstTableEntry, AstUniqueTableConstraint } from "./ast"
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyTableConstraint, AstTableConstraintComposition, AstTableEntry, AstUniqueTableConstraint } from "../parser/ast"
 import { Rds, RdsColumn, RdsColumns, RdsForeignKeyColumnConstraint, RdsIndex, RdsPrimaryKeyTableConstraint, RdsTable, RdsTables, RdsUniqueTableConstraint } from "./rds"
 
-export function createRds({ orders }: Ast): Rds {
+export function createRdsFromAst({ orders }: Ast): Rds {
   const astTables = orders.filter(({ orderType }) => orderType === "createTable") as AstCreateTable[]
   const astAlterTables = orders.filter(({ orderType }) => orderType === "alterTable") as AstAlterTable[]
   const astCreateIndexes = orders.filter(({ orderType }) => orderType === "createIndex") as AstCreateIndex[]
@@ -182,11 +182,13 @@ function fillColumnConstraints(astCompos: AstColumnConstraintComposition[], colu
         case "notNull":
           column.constraints.notNull = true
           break
+        case "null":
+          break
         case "primaryKey":
           column.constraints.primaryKey = true
           break
-        case "autoIncrement":
-          column.constraints.autoIncrement = true
+        case "autoincrement":
+          column.constraints.autoincrement = true
           break
         case "unique":
           column.constraints.unique = true

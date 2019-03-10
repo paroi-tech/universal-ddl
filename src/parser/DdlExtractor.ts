@@ -1,4 +1,4 @@
-const { UniversalDdlListener } = require("../parser/UniversalDdlListener")
+const { UniversalDdlListener } = require("../../antlr-parser/UniversalDdlListener")
 import { ruleNameOf } from "./antlr4-utils"
 import {
   Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCommentable, AstCreateIndex,
@@ -136,9 +136,14 @@ export default class DdlExtractor extends UniversalDdlListener {
             constraintType: "notNull"
           })
           break
+        case "KW_NULL":
+          composition.constraints.push({
+            constraintType: "null"
+          })
+          break
         case "KW_AUTOINCREMENT":
           composition.constraints.push({
-            constraintType: "autoIncrement"
+            constraintType: "autoincrement"
           })
           break
         case "primaryKeyColumnConstraintDef":
@@ -170,6 +175,8 @@ export default class DdlExtractor extends UniversalDdlListener {
             value: buildDefaultValue(childCtx.children[1])
           })
           break
+        default:
+          throw new Error(`Unexpected column constraint: ${childCtx.getText()}`)
       }
     }
 

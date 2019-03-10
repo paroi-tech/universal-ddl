@@ -27,24 +27,5 @@ node dist/example.js
 With VS Code, our recommanded plugins are:
 
 - **ANTLR4 grammar syntax support** from Mike Lischke (`mike-lischke.vscode-antlr4`)
-- **TODO Highlight** from Wayou Liu (`wayou.vscode-todo-highlight`)
+- **Todo Tree** from Gruntfuggly (`gruntfuggly.todo-tree`)
 - **TSLint** from Microsoft (`ms-vscode.vscode-typescript-tslint-plugin`)
-
-## Optional — Use the Java tool for testing
-
-Notices:
-
-* We are not using Java. But the tool provided by ANTLR to test grammars works only with Java.
-* A Java compiler must be installed on your system.
-
-To generate and build lexer and parser:
-
-```sh
-npm run java-build
-```
-
-Then you can test the grammar with:
-
-```sh
-npm run java-test
-```

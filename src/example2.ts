@@ -1,8 +1,8 @@
-import { parseDdl, parseDdlToRds } from "./index"
+import { parseDdlToRds } from "./index"
 
 const input = `
 create table account (
-    account_id integer not null primary key autoincrement,
+    account_id bigint not null primary key autoincrement,
     name varchar(255) not null,
     login varchar(255) not null unique,
     email varchar(255) not null unique,
@@ -12,26 +12,26 @@ create table account (
 );
 
 create table step (
-    step_id integer not null primary key autoincrement,
+    step_id bigint not null primary key autoincrement,
     label varchar(255) not null unique,
     order_num integer
 );
 
 create table project (
-    project_id integer not null primary key autoincrement,
+    project_id bigint not null primary key autoincrement,
     code varchar(255) not null unique,
     archived tinyint not null default 0,
     task_seq bigint not null
 );
 
 create table project_step (
-    project_id bigint not null references project(project_id) on delete cascade,
+    project_id bigint not null references project on delete cascade,
     step_id bigint not null references step(step_id),
     primary key (project_id, step_id)
 );
 
 create table task (
-    task_id integer not null primary key autoincrement,
+    task_id bigint not null primary key autoincrement,
     project_id bigint not null references project(project_id),
     cur_step_id bigint not null references step(step_id),
     code varchar(255) not null unique,
@@ -61,7 +61,7 @@ create table task_affected_to (
 );
 
 create table task_log (
-    task_log_id integer not null primary key autoincrement,
+    task_log_id bigint not null primary key autoincrement,
     task_id bigint not null references task(task_id) on delete cascade,
     step_id bigint not null references step(step_id) on delete cascade,
     entry_ts timestamp not null default current_timestamp,
@@ -74,7 +74,7 @@ create table root_task (
 );
 
 create table flag (
-    flag_id integer not null primary key autoincrement,
+    flag_id bigint not null primary key autoincrement,
     label varchar(255) not null unique,
     color char(6),
     order_num integer
@@ -87,7 +87,7 @@ create table task_flag (
 );
 
 create table comment (
-    comment_id integer not null primary key autoincrement,
+    comment_id bigint not null primary key autoincrement,
     task_id bigint not null references task(task_id) on delete cascade,
     written_by bigint not null references account(account_id),
     body text not null,
@@ -97,7 +97,7 @@ create table comment (
 
 -- Application: frontend-registration or frontend-entry
 create table reg_pwd (
-    reg_pwd_id integer not null primary key autoincrement,
+    reg_pwd_id bigint not null primary key autoincrement,
     token varchar(255) not null unique,
     account_id bigint not null references account(account_id),
     expire_ts timestamp not null,
@@ -105,7 +105,7 @@ create table reg_pwd (
 );
 
 create table reg_new (
-    reg_new_id integer not null primary key autoincrement,
+    reg_new_id bigint not null primary key autoincrement,
     token varchar(255) not null unique,
     user_email varchar(255) not null,
     user_name varchar(255),
@@ -114,7 +114,7 @@ create table reg_new (
 );
 
 create table git_commit (
-    commit_id integer not null primary key autoincrement,
+    commit_id bigint not null primary key autoincrement,
     external_id varchar(255) not null,
     message text not null,
     author_name varchar(255) not null,
@@ -130,12 +130,12 @@ create table git_commit_task (
 );
 
 create table git_subscription (
-    subscription_id integer not null primary key autoincrement,
+    subscription_id bigint not null primary key autoincrement,
     provider varchar(255) not null,
     secret varchar(255) not null,
     subscription_uuid varchar(255) not null unique,
     active tinyint not null default 1
 );
 `
-const rds = parseDdlToRds(input)
+const rds = parseDdlToRds(input, { freeze: true, checkConsistency: true })
 console.log(rds)
