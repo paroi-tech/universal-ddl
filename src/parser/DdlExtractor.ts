@@ -1,17 +1,17 @@
 const { UniversalDdlListener } = require("../../antlr-parser/UniversalDdlListener")
-import { ruleNameOf } from "./antlr4-utils"
+import { AntlrAnyRuleContext, AntlrRuleContext, AntlrTokenStream, ruleNameOf } from "./antlr4-utils"
 import {
   Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCommentable, AstCreateIndex,
-  AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTableConstraintComposition, AstTableEntry, AstValue
+  AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableConstraintComposition, AstTableEntry, AstValue
 } from "./ast"
-import CommentAnnotator from "./CommentAnnotator"
+import CommentGrabber, { GrabbedCommentsResult } from "./CommentGrabber"
 
 export interface DdlParsingContext {
   source: string
   /**
    * Of type `CommonTokenStream`.
    */
-  tokenStream: any
+  tokenStream: AntlrTokenStream
   tokenTypes: {
     COMMA: number
     COMMENT: number
@@ -23,68 +23,74 @@ export default class DdlExtractor extends UniversalDdlListener {
   ast?: Ast
   private currentEntries?: AstTableEntry[]
   private currentColumn?: AstColumn
-  private comments?: CommentAnnotator
+  private comments: CommentGrabber
 
   constructor(private parsingContext: DdlParsingContext) {
     super()
+    this.comments = new CommentGrabber(this.parsingContext)
   }
 
   enterScript() {
-    this.comments = new CommentAnnotator(this.parsingContext)
     this.ast = {
       orders: []
     }
   }
 
-  enterTableDef(ctx) {
+  exitScript() {
+    this.addStandaloneComments(this.comments.grabStandaloneCommentsAfterLast())
+  }
+
+  enterCreateTableDef() {
     this.currentEntries = []
   }
 
-  exitTableDef(ctx) {
-    const table: AstCreateTable = {
+  exitCreateTableDef(ctx: AntlrAnyRuleContext) {
+    const createTable: AstCreateTable = {
       orderType: "createTable",
       name: getIdentifierText(ctx.tableName),
       entries: this.currentEntries!
     }
-    this.comments!.appendCommentsTo(table, ctx)
-    this.ast!.orders.push(table)
+    this.addToEntriesStandaloneComments(this.comments.grabStandaloneCommentsAfterLast())
+    this.addStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: createTable }))
+    this.ast!.orders.push(createTable)
     this.currentEntries = undefined
   }
 
-  enterAlterTableDef(ctx) {
+  enterAlterTableDef() {
     this.currentEntries = []
   }
 
-  exitAlterTableDef(ctx) {
+  exitAlterTableDef(ctx: AntlrAnyRuleContext) {
     const alterTable: AstAlterTable = {
       orderType: "alterTable",
       table: getIdentifierText(ctx.tableName),
       add: this.currentEntries!
     }
-    this.comments!.appendCommentsTo(alterTable, ctx)
+    this.addToEntriesStandaloneComments(this.comments.grabStandaloneCommentsAfterLast())
+    this.addStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: alterTable }))
     this.ast!.orders.push(alterTable)
     this.currentEntries = undefined
   }
 
-  enterIndexDef(ctx) {
+  enterIndexDef(ctx: AntlrAnyRuleContext) {
     const index: any = {
-      columns: getIdListItemTexts(ctx.columns)
+      columns: getTextsOfIdentifierList(ctx.columns)
     }
     if (ctx.KW_UNIQUE())
       index.constraintType = "unique"
 
-    const order: AstCreateIndex = {
+    const createIndex: AstCreateIndex = {
       orderType: "createIndex",
       table: getIdentifierText(ctx.tableName),
       index
     }
-    this.comments!.appendCommentsTo(order, ctx)
+    this.addStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: createIndex }))
     if (ctx.indexName)
-      order.name = getIdentifierText(ctx.indexName)
-    this.ast!.orders.push(order)
+      createIndex.name = getIdentifierText(ctx.indexName)
+    this.ast!.orders.push(createIndex)
   }
 
-  enterColumnDef(ctx) {
+  enterColumnDef(ctx: AntlrAnyRuleContext) {
     const typeCtx = ctx.columnType()
 
     const column: AstColumn = {
@@ -93,7 +99,7 @@ export default class DdlExtractor extends UniversalDdlListener {
       type: typeCtx.children[0].getText(),
     }
 
-    this.comments!.appendCommentsTo(column, ctx)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: column }))
 
     if (typeCtx.children.length > 1 && "UINT_LITERAL" in typeCtx) {
       const params = typeCtx.UINT_LITERAL()
@@ -109,11 +115,11 @@ export default class DdlExtractor extends UniversalDdlListener {
     this.currentColumn = column
   }
 
-  exitColumnDef(ctx) {
+  exitColumnDef() {
     this.currentColumn = undefined
   }
 
-  enterColumnDetails(ctx) {
+  enterColumnDetails(ctx: AntlrAnyRuleContext) {
     if (!ctx.children)
       return
 
@@ -184,40 +190,95 @@ export default class DdlExtractor extends UniversalDdlListener {
       this.currentColumn!.constraintCompositions = constraintCompositions
   }
 
-  enterTableUniqueConstraintDef(ctx) {
-    this.currentEntries!.push(
-      buildTableUniqueConstraint(ctx.uniqueConstraintDef(), this.comments!)
-    )
+  enterTableUniqueConstraintDef(ctx: AntlrAnyRuleContext) {
+    const constraintCtx = ctx.uniqueConstraintDef()
+    const composition: AstTableConstraintComposition = {
+      entryType: "constraintComposition",
+      constraints: [{
+        constraintType: "unique",
+        columns: getTextsOfIdentifierList(constraintCtx.identifierList())
+      }]
+    }
+    if (constraintCtx.constraintName)
+      composition.name = getIdentifierText(constraintCtx.constraintName)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
+    this.currentEntries!.push(composition)
   }
 
-  enterTablePrimaryKeyConstraintDef(ctx) {
-    this.currentEntries!.push(
-      buildTablePrimaryKeyConstraint(ctx.primaryKeyConstraintDef(), this.comments!)
-    )
+  enterTablePrimaryKeyConstraintDef(ctx: AntlrAnyRuleContext) {
+    const constraintCtx = ctx.primaryKeyConstraintDef()
+    const composition: AstTableConstraintComposition = {
+      entryType: "constraintComposition",
+      constraints: [{
+        constraintType: "primaryKey",
+        columns: getTextsOfIdentifierList(constraintCtx.identifierList())
+      }]
+    }
+    if (constraintCtx.constraintName)
+      composition.name = getIdentifierText(constraintCtx.constraintName)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
+    this.currentEntries!.push(composition)
   }
 
-  enterTableForeignKeyConstraintDef(ctx) {
-    this.currentEntries!.push(
-      buildTableForeignKeyConstraint(ctx.foreignKeyConstraintDef(), this.comments!)
-    )
+  enterTableForeignKeyConstraintDef(ctx: AntlrAnyRuleContext) {
+    const constraintCtx = ctx.foreignKeyConstraintDef()
+    const fkConstraint: AstForeignKeyTableConstraint = {
+      constraintType: "foreignKey",
+      columns: getTextsOfIdentifierList(constraintCtx.columns),
+      referencedTable: getIdentifierText(constraintCtx.referencedTable)
+    }
+    if (constraintCtx.referencedColumns)
+      fkConstraint.referencedColumns = getTextsOfIdentifierList(constraintCtx.referencedColumns)
+    const composition: AstTableConstraintComposition = {
+      entryType: "constraintComposition",
+      constraints: [fkConstraint]
+    }
+    if (constraintCtx.constraintName)
+      composition.name = getIdentifierText(constraintCtx.constraintName)
+    if (constraintCtx.onDelete && constraintCtx.onDelete.KW_CASCADE())
+      fkConstraint.onDelete = "cascade"
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
+    this.currentEntries!.push(composition)
+  }
+
+  private addStandaloneCommentsBefore({ standaloneCommentsBefore }: GrabbedCommentsResult) {
+    this.addStandaloneComments(standaloneCommentsBefore)
+  }
+
+  private addStandaloneComments(comments: string[]) {
+    this.ast!.orders.push(...comments.map(blockComment => ({
+      orderType: "comment",
+      blockComment
+    } as AstStandaloneComment)))
+  }
+
+  private addToEntriesStandaloneCommentsBefore({ standaloneCommentsBefore }: GrabbedCommentsResult) {
+    this.addToEntriesStandaloneComments(standaloneCommentsBefore)
+  }
+
+  private addToEntriesStandaloneComments(comments: string[]) {
+    this.currentEntries!.push(...comments.map(blockComment => ({
+      entryType: "comment",
+      blockComment
+    } as AstStandaloneTableComment)))
   }
 }
 
-function buildDefaultValue(node): AstValue {
-  switch (ruleNameOf(node)) {
+function buildDefaultValue(ctx: AntlrAnyRuleContext): AstValue {
+  switch (ruleNameOf(ctx)) {
     case "UINT_LITERAL":
     case "INT_LITERAL":
       return {
         type: "int",
-        value: parseInt(node.getText(), 10)
+        value: parseInt(ctx.getText(), 10)
       }
     case "FLOAT_LITERAL":
       return {
         type: "float",
-        value: parseFloat(node.getText())
+        value: parseFloat(ctx.getText())
       }
     case "STRING_LITERAL":
-      const text = node.getText()
+      const text = ctx.getText()
       return {
         type: "string",
         value: text.substring(1, text.length - 1).replace(/[']{2}/, "'")
@@ -227,70 +288,24 @@ function buildDefaultValue(node): AstValue {
     case "KW_CURRENT_TS":
       return {
         type: "sqlExpr",
-        value: node.getText()
+        value: ctx.getText()
       }
     default:
-      throw new Error(`Unexpected value: ${ruleNameOf(node)}`)
+      throw new Error(`Unexpected value: ${ruleNameOf(ctx)}`)
   }
 }
 
-function buildTableUniqueConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
-  const composition: AstTableConstraintComposition = {
-    entryType: "constraintComposition",
-    constraints: [{
-      constraintType: "unique",
-      columns: getIdListItemTexts(ctx.identifierList())
-    }]
-  }
-  if (ctx.constraintName)
-    composition.name = getIdentifierText(ctx.constraintName)
-  comments.appendCommentsTo(composition, ctx)
-  return composition
-}
-
-function buildTablePrimaryKeyConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
-  const composition: AstTableConstraintComposition = {
-    entryType: "constraintComposition",
-    constraints: [{
-      constraintType: "primaryKey",
-      columns: getIdListItemTexts(ctx.identifierList())
-    }]
-  }
-  if (ctx.constraintName)
-    composition.name = getIdentifierText(ctx.constraintName)
-  comments.appendCommentsTo(composition, ctx)
-  return composition
-}
-
-function buildTableForeignKeyConstraint(ctx, comments: CommentAnnotator): AstTableConstraintComposition {
-  const fkConstraint: AstForeignKeyTableConstraint = {
-    constraintType: "foreignKey",
-    columns: getIdListItemTexts(ctx.columns),
-    referencedTable: getIdentifierText(ctx.referencedTable)
-  }
-  if (ctx.referencedColumns)
-    fkConstraint.referencedColumns = getIdListItemTexts(ctx.referencedColumns)
-  const composition: AstTableConstraintComposition = {
-    entryType: "constraintComposition",
-    constraints: [fkConstraint]
-  }
-  if (ctx.constraintName)
-    composition.name = getIdentifierText(ctx.constraintName)
-  if (ctx.onDelete && ctx.onDelete.KW_CASCADE())
-    fkConstraint.onDelete = "cascade"
-  comments.appendCommentsTo(composition, ctx)
-  return composition
-}
-
-function getIdentifierText(idCtx) {
+function getIdentifierText(idCtx: AntlrAnyRuleContext) {
   return idCtx.IDENTIFIER().getText()
 }
 
-function getIdListItemTexts(idListCtx) {
-  const list: any[] = []
-  for (const idCtx of idListCtx.id()) {
-    const text = getIdentifierText(idCtx)
-    list.push(text)
-  }
-  return list
+function getTextsOfIdentifierList(ctx: AntlrAnyRuleContext) {
+  return ctx.id().map(idCtx => getIdentifierText(idCtx))
+
+  // const list: any[] = []
+  // for (const idCtx of idListCtx.id()) {
+  //   const text = getIdentifierText(idCtx)
+  //   list.push(text)
+  // }
+  // return list
 }

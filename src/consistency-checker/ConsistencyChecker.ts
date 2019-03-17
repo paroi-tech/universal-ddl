@@ -6,18 +6,6 @@ export interface ConsistencyCheckerReport {
   errors?: string[]
 }
 
-/*
-- for each table constraint: check if columns exist in the table
-- for each foreign key (table constraint and column constraint):
-   - check if referenced table and referenced columns exist
-   - check if column types match
-   - check if the referenced columns are the primary key
-- default values must match with column types (and try to parse dates)
-- alter table and create index: check if the table exists
-- do not allow to create 2 tables or columns or constraints with the same name
-- A table cannot have several primary keys
-*/
-
 interface CheckedTable {
   name: string
   columns: Map<string, CheckedColumn>
@@ -68,6 +56,8 @@ export default class ConsistencyChecker {
           break
         case "createIndex":
           this.checkCreateIndex(order)
+          break
+        case "comment":
           break
         default:
           throw new Error(`Unexpected order type: ${order!.orderType}`)
@@ -151,6 +141,8 @@ export default class ConsistencyChecker {
           entry.constraints.forEach(
             constraint => this.checkTableConstraint(constraint, checkedTable)
           )
+          break
+        case "comment":
           break
         default:
           throw new Error(`Unexpected type of table entry: ${entry!.entryType}`)

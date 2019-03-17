@@ -1,25 +1,15 @@
-# universal-ddl
+# tomko/universal-ddl
 
-## Install
+## Install and build
 
-Install a JVM on your system.
-
-Download the `antlr` JAR file in the project's root directory:
+At first, install a JVM on your system.
 
 ```sh
+# Download the `antlr` JAR file in the project's root directory
 wget https://www.antlr.org/download/antlr-4.7.2-complete.jar
-```
 
-## Build
-
-```sh
+# Build
 npm run build
-```
-
-## Run the demonstrations
-
-```sh
-node dist/example.js
 ```
 
 ## Contribute

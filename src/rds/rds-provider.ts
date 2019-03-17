@@ -15,10 +15,7 @@ export function createRdsFromAst({ orders }: Ast): Rds {
   astAlterTables.forEach(({ table, add }) => fillTableAndColumnConstraints(table, add, tables))
   astCreateIndexes.forEach(createIndex => fillTableIndexes(createIndex, tables))
 
-  return {
-    tableNames: astTables.map(({ name }) => name),
-    tables
-  }
+  return { tables }
 }
 
 function createRdsTable({ name, entries, blockComment, inlineComment }: AstCreateTable): RdsTable {
@@ -26,7 +23,6 @@ function createRdsTable({ name, entries, blockComment, inlineComment }: AstCreat
   const columns: RdsColumns = {}
   const table: RdsTable = {
     name,
-    columnNames: astColumns.map(({ name }) => name),
     columns,
     constraints: {},
     blockComment,

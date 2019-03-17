@@ -2,7 +2,7 @@ export interface Ast {
   orders: AstOrder[]
 }
 
-export type AstOrder = AstCreateTable | AstAlterTable | AstCreateIndex
+export type AstOrder = AstCreateTable | AstAlterTable | AstCreateIndex | AstStandaloneComment
 
 export type AstOrderType = AstOrder["orderType"]
 
@@ -25,7 +25,7 @@ export interface AstCreateIndex extends AstCommentable {
   index: AstIndex | AstUniqueTableConstraint
 }
 
-export type AstTableEntry = AstColumn | AstTableConstraintComposition
+export type AstTableEntry = AstColumn | AstTableConstraintComposition | AstStandaloneTableComment
 
 export type AstTableEntryType = AstTableEntry["entryType"]
 
@@ -124,9 +124,25 @@ export interface AstForeignKeyColumnConstraint {
   onUpdate?: AstForeignKeyAction
 }
 
+export interface AstStandaloneComment {
+  orderType: "comment"
+  /**
+   * A multiline string.
+   */
+  blockComment: string
+}
+
+export interface AstStandaloneTableComment {
+  entryType: "comment"
+  /**
+   * A multiline string.
+   */
+  blockComment: string
+}
+
 export interface AstCommentable {
   /**
-   * A multilines string.
+   * A multiline string.
    */
   blockComment?: string
   inlineComment?: string | string[]

@@ -1,4 +1,4 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstDefaultColumnConstraint, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstPrimaryKeyTableConstraint, AstTableConstraintComposition, AstUniqueTableConstraint, AstValue } from "../parser/ast"
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstDefaultColumnConstraint, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstPrimaryKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableConstraintComposition, AstUniqueTableConstraint, AstValue } from "../parser/ast"
 import { appendSuffix, makeGeneratorContext, tryToMakeInlineBlock } from "./gen-helpers"
 import { CodeBlock, GeneratorContext, GeneratorOptions, InlineCode } from "./index"
 
@@ -17,20 +17,31 @@ const ast = {
 const orders = {
   createTable(cx: GeneratorContext, node: AstCreateTable): CodeBlock {
     const entries = node.entries.map(entry => cx.gen("tableEntries", entry.entryType, entry))
-    const ic = node.inlineComment
-    const inlineComs = (ic ? (typeof ic === "string" ? [ic] : ic) : []).map(inlineComment => ({ inlineComment }))
+
+    let firstInlineCom: string | undefined
+    let lastInlineCom: string[] | undefined
+    if (node.inlineComment) {
+      if (typeof node.inlineComment === "string")
+        firstInlineCom = node.inlineComment
+      else if (node.inlineComment.length > 0)
+        [firstInlineCom, ...lastInlineCom] = node.inlineComment
+    }
+
     return {
       lines: [
         toCodeBlockComment(node.blockComment),
-        { code: `create table ${node.name} (` },
+        {
+          code: `create table ${node.name} (`,
+          inlineComment: firstInlineCom
+        },
         {
           indent: 1,
-          lines: [
-            ...appendSuffix(entries, { notLast: "," }),
-            ...inlineComs,
-          ]
+          lines: appendSuffix(entries, { notLast: "," })
         },
-        { code: ");" },
+        {
+          code: ");",
+          inlineComment: normalizeInlineComment(lastInlineCom)
+        },
       ]
     }
   },
@@ -74,6 +85,10 @@ const orders = {
         },
       ]
     }
+  },
+
+  comment(cx: GeneratorContext, node: AstStandaloneComment): CodeBlock {
+    return toCodeBlockStandaloneComment(node.blockComment)
   }
 }
 
@@ -129,6 +144,10 @@ const tableEntries = {
         ...constraints
       ]
     }
+  },
+
+  comment(cx: GeneratorContext, node: AstStandaloneTableComment): CodeBlock {
+    return toCodeBlockStandaloneComment(node.blockComment)
   }
 }
 
@@ -208,7 +227,8 @@ const columnConstraints = {
   foreignKey(cx: GeneratorContext, node: AstForeignKeyColumnConstraint): InlineCode {
     const del = node.onDelete ? ` on delete ${node.onDelete}` : ""
     const upd = node.onUpdate ? ` on update ${node.onUpdate}` : ""
-    return { code: `references ${node.referencedTable} (${node.referencedColumn})${del}${upd}` }
+    const refCol = node.referencedColumn ? ` (${node.referencedColumn})` : ""
+    return { code: `references ${node.referencedTable}${refCol}${del}${upd}` }
   },
 }
 
@@ -232,6 +252,15 @@ export function toSqlValue({ type, value }: AstValue): string {
       return value as string
     default:
       throw new Error(`Unexpected value type: ${type}`)
+  }
+}
+
+export function toCodeBlockStandaloneComment(blockComment: string, indent?: number): CodeBlock {
+  return {
+    indent,
+    lines: blockComment.split("\n").map(inlineComment => ({ inlineComment })),
+    spaceBefore: true,
+    spaceAfter: true
   }
 }
 

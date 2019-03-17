@@ -10,7 +10,7 @@ export interface GeneratorOptions {
   indentUnit?: string
 }
 
-export function generateDdl(dialect: Dialect, ast: Ast, options: GeneratorOptions = {}): string {
+export function generateDdl(ast: Ast, dialect: Dialect, options: GeneratorOptions = {}): string {
   const maker = dialects[dialect.toLowerCase()]
   if (!maker)
     throw new Error(`Unknown dialect: ${dialect}`)
@@ -53,6 +53,8 @@ export type CodePiece = InlineCode | CodeBlock | undefined
 export interface CodeBlock {
   indent?: number
   lines: CodePiece[]
+  spaceBefore?: boolean
+  spaceAfter?: boolean
 }
 
 export interface InlineCode {

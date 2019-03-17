@@ -31,6 +31,6 @@
     "tslint": "^5.14.0",
     "typescript": "^3.3.3333"
   },
-  "main": "dist/index.js",
+  "main": "dist/api.js",
   "bin": "./dist/cli.js"
 }

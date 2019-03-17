@@ -1,5 +1,6 @@
+import { removeSelectedColumnConstraints } from "../ast-modifier/modifier-helpers"
 import { AstColumn, AstColumnConstraintComposition, AstDataType } from "../parser/ast"
-import { makeGeneratorContext, removeSelectedColumnConstraints } from "./gen-helpers"
+import { makeGeneratorContext } from "./gen-helpers"
 import { CodeBlock, GeneratorContext, GeneratorOptions, InlineCode } from "./index"
 import { normalizeInlineComment, toCodeBlockComment, universalDdlSections as parent } from "./universal-ddl-generator"
 

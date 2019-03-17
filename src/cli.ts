@@ -3,7 +3,7 @@ import commandLineArgs = require("command-line-args")
 import commandLineUsage = require("command-line-usage")
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { basename, dirname, extname } from "path"
-import { parseDdl } from "."
+import { parseDdl } from "./api"
 import { Dialect, generateDdl } from "./dialect-generators"
 import { Ast } from "./parser/ast"
 
@@ -20,6 +20,12 @@ const optionDefinitions = [
     alias: "h",
     type: Boolean,
     description: "Print this help message."
+  },
+  {
+    name: "autofix",
+    alias: "a",
+    type: Boolean,
+    description: "Enable autofixes."
   },
   {
     name: "output-dir",
@@ -135,19 +141,20 @@ function processFile(file: string, options) {
     throw new InvalidArgumentError(`Cannot read file: ${file}`)
   }
   const bnad = baseNameAndDir(file)
-  const ast = parseDdl(input, { freeze: true })
+  const autofix = options.autofix ? { foreignKeys: true } : undefined
+  const ast = parseDdl(input, { freeze: true, checkConsistency: true, autofix })
   if (options.postgresql)
-    writeDdl("postgresql", ast, options, bnad)
+    writeDdl(ast, "postgresql", options, bnad)
   if (options.sqlite)
-    writeDdl("sqlite", ast, options, bnad)
+    writeDdl(ast, "sqlite", options, bnad)
   if (options.mariadb)
-    writeDdl("mariadb", ast, options, bnad)
+    writeDdl(ast, "mariadb", options, bnad)
   if (options["universal-ddl"])
-    writeDdl("universalddl", ast, options, bnad)
+    writeDdl(ast, "universalddl", options, bnad)
 }
 
-function writeDdl(dialect: Dialect, ast: Ast, options, bnad: BaseNameAndDir) {
-  const ddl = generateDdl(dialect, ast)
+function writeDdl(ast: Ast, dialect: Dialect, options, bnad: BaseNameAndDir) {
+  const ddl = generateDdl(ast, dialect)
   const dir = normalizePath(options["output-dir"], bnad.directory)
   const file = `${dir}/${bnad.fileBaseName}.${dialect}${bnad.extension}`
   if (!options.force && existsSync(file))

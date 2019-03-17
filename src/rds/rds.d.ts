@@ -2,7 +2,6 @@
  * Relational Database Structure
  */
 export interface Rds {
-  tableNames: string[]
   tables: RdsTables
 }
 
@@ -10,7 +9,6 @@ export type RdsTables = { [name: string]: RdsTable }
 
 export interface RdsTable extends RdsCommentable {
   name: string
-  columnNames: string[]
   columns: RdsColumns
   constraints: RdsTableContraints
   indexes?: RdsIndex[]

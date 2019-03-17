@@ -7,8 +7,8 @@ import DdlExtractor from "./DdlExtractor"
 export function parseDdlToAst(source: string): Ast {
   const chars = new InputStream(source)
   const lexer = new UniversalDdlLexer(chars)
-  const tokens = new CommonTokenStream(lexer)
-  const parser = new UniversalDdlParser(tokens)
+  const tokenStream = new CommonTokenStream(lexer)
+  const parser = new UniversalDdlParser(tokenStream)
 
   parser.buildParseTrees = true
   parser.removeErrorListeners()
@@ -23,7 +23,7 @@ export function parseDdlToAst(source: string): Ast {
 
   const extractor = new DdlExtractor({
     source,
-    tokenStream: tokens,
+    tokenStream,
     tokenTypes: {
       COMMA: UniversalDdlParser.COMMA,
       COMMENT: UniversalDdlParser.COMMENT,

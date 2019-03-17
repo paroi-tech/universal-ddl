@@ -1,5 +1,4 @@
 import { AstModifier } from "../ast-modifier/ast-modifier"
-import { AstColumnConstraintComposition } from "../parser/ast"
 import { CodeBlock, CodePiece, GeneratorContext, GeneratorOptions, GenSections, InlineCode } from "./index"
 
 export function makeGeneratorContext(options: GeneratorOptions, sections: GenSections, modifiers?: AstModifier[]): GeneratorContext {
@@ -41,7 +40,7 @@ export function codeToString(cx: GeneratorContext, code: CodePiece): string {
   if (!code)
     return ""
   if (isCodeBlock(code))
-    return codeBlockToString(cx, code, 0, "\n\n")
+    return codeBlockToString(cx, code, 0, "spaced")
   else
     return codeLineToString(code)
 }
@@ -54,17 +53,23 @@ export function isInlineCode(code: CodePiece): code is InlineCode {
   return !!(code && !code["lines"])
 }
 
-function codeBlockToString(cx: GeneratorContext, { indent, lines }: CodeBlock, parentIndent = 0, sep = "\n"): string {
+function codeBlockToString(cx: GeneratorContext, block: CodeBlock, parentIndent = 0, spaceMode?: "spaced" | "cancel"): string {
+  const { indent, lines, spaceBefore, spaceAfter } = block
   const curIndent = (indent || 0) + parentIndent
-  return lines.map(item => {
+  const content = lines.map(item => {
     if (!item)
       return
     const prefix = indentation(cx, curIndent)
     if (isCodeBlock(item))
-      return codeBlockToString(cx, item, curIndent)
+      return codeBlockToString(cx, item, curIndent, spaceMode === "spaced" ? "cancel" : undefined)
     else
       return prefix + codeLineToString(item)
-  }).filter(line => !!line).join(sep)
+  }).filter(line => !!line).join(spaceMode === "spaced" ? "\n\n" : "\n")
+  if (spaceMode === "cancel")
+    return content
+  const prefix = spaceBefore ? "\n" : ""
+  const suffix = spaceAfter ? "\n" : ""
+  return prefix + content + suffix
 }
 
 function codeLineToString({ code, inlineComment }: InlineCode): string {
@@ -124,46 +129,15 @@ export function tryToMakeInlineBlock(pieces: CodePiece[], inlineComment?: string
   }
   if (!single)
     return
-  if (isCodeBlock(single))
+  if (isCodeBlock(single)) {
+    if (single.spaceBefore || single.spaceAfter)
+      return
     return tryToMakeInlineBlock(single.lines, inlineComment)
+  }
   if (single.inlineComment)
     inlineComment = inlineComment ? `${single.inlineComment} ${inlineComment}` : single.inlineComment
   return {
     ...single,
     inlineComment
   }
-}
-
-interface SelectedConstraint {
-  compoIndex: number
-  constraintIndex: number
-}
-
-export function removeSelectedColumnConstraints(sel: SelectedConstraint[], compos: AstColumnConstraintComposition[]) {
-  // Build map
-  const map = new Map<number, number[]>()
-  for (const { compoIndex, constraintIndex } of sel) {
-    let indices = map.get(compoIndex)
-    if (!indices) {
-      indices = []
-      map.set(compoIndex, indices)
-    }
-    indices.push(constraintIndex)
-  }
-
-  // Make a copy with removed constraints
-  const copy = [...compos]
-  for (const [compoIndex, constraintIndices] of map.entries()) {
-    copy[compoIndex] = {
-      ...copy[compoIndex],
-      constraints: [...copy[compoIndex].constraints]
-    }
-    for (const constraintIndex of constraintIndices.reverse())
-      copy[compoIndex].constraints.splice(constraintIndex, 1)
-  }
-  for (const compoIndex of Array.from(map.keys()).sort((a, b) => b - a)) {
-    if (copy[compoIndex].constraints.length === 0)
-      copy.splice(compoIndex, 1)
-  }
-  return copy.length === 0 ? undefined : copy
 }

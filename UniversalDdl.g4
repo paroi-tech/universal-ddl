@@ -4,7 +4,7 @@ grammar UniversalDdl;
  * Parser rules
  */
 
-script: (tableDef | indexDef | alterTableDef)+ EOF;
+script: (createTableDef | indexDef | alterTableDef)* EOF;
 
 id: IDENTIFIER;
 
@@ -88,7 +88,7 @@ tableItemList: (columnDef | constraintDef) (
     COMMA (columnDef | constraintDef)
   )*;
 
-tableDef:
+createTableDef:
   KW_CREATE KW_TABLE tableName = id LEFT_BRACKET tableItemList RIGHT_BRACKET SEMICOLON;
 
 indexDef:

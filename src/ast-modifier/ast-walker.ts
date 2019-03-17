@@ -14,7 +14,7 @@ export interface ArrayWalker {
   child?: NodeWalker
 }
 
-export type NodeWalkerProvider = ((node: any) => NodeWalker)
+export type NodeWalkerProvider = ((node: any) => NodeWalker | undefined)
 
 export interface NodeWalkers {
   [name: string]: NodeWalker
