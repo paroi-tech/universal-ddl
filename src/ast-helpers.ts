@@ -1,11 +1,9 @@
-import { AstColumn, AstColumnConstraintType, AstDataType } from "./parser/ast"
+import { AstColumn, AstColumnConstraintType, AstDataType } from "./ast"
 
-export function hasColumnConstraint({ constraintCompositions }: AstColumn, type: AstColumnConstraintType): boolean {
-  if (!constraintCompositions)
+export function hasColumnConstraint({ constraints }: AstColumn, type: AstColumnConstraintType): boolean {
+  if (!constraints)
     return false
-  return !!constraintCompositions.find(
-    ({ constraints }) => !!constraints.find(({ constraintType }) => constraintType === type)
-  )
+  return !!constraints.find(({ constraintType }) => constraintType === type)
 }
 
 export function isDataTypeInteger(colType: AstDataType) {

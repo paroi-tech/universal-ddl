@@ -1,4 +1,4 @@
-import { AstAlterTable, AstCreateIndex, AstCreateTable, AstTableConstraintComposition } from "../src/parser/ast"
+import { AstAlterTable, AstCreateIndex, AstCreateTable, AstForeignKeyTableConstraint, AstPrimaryKeyTableConstraint, AstUniqueTableConstraint } from "../src/ast"
 import { parseDdlToAst } from "../src/parser/parse-ddl"
 
 describe("AST Specification for tables", () => {
@@ -43,12 +43,10 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
-      constraints: [{
-        constraintType: "primaryKey",
-        columns: ["a", "b"]
-      }]
-    } as AstTableConstraintComposition)
+      entryType: "constraint",
+      constraintType: "primaryKey",
+      columns: ["a", "b"]
+    } as AstPrimaryKeyTableConstraint)
   })
 
   test("table constraint: foreign key", () => {
@@ -60,14 +58,12 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
-      constraints: [{
-        constraintType: "foreignKey",
-        columns: ["a", "b"],
-        referencedTable: "other_table",
-        referencedColumns: ["c", "d"]
-      }]
-    } as AstTableConstraintComposition)
+      entryType: "constraint",
+      constraintType: "foreignKey",
+      columns: ["a", "b"],
+      referencedTable: "other_table",
+      referencedColumns: ["c", "d"]
+    } as AstForeignKeyTableConstraint)
   })
 
   test("table constraint: named foreign key", () => {
@@ -79,15 +75,13 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
+      entryType: "constraint",
       name: "fk1",
-      constraints: [{
-        constraintType: "foreignKey",
-        columns: ["a", "b"],
-        referencedTable: "other_table",
-        referencedColumns: ["c", "d"]
-      }]
-    } as AstTableConstraintComposition)
+      constraintType: "foreignKey",
+      columns: ["a", "b"],
+      referencedTable: "other_table",
+      referencedColumns: ["c", "d"]
+    } as AstForeignKeyTableConstraint)
   })
 
   test("table constraint: named foreign key on delete cascade", () => {
@@ -99,16 +93,14 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
+      entryType: "constraint",
       name: "fk1",
-      constraints: [{
-        constraintType: "foreignKey",
-        columns: ["a", "b"],
-        referencedTable: "other_table",
-        referencedColumns: ["c", "d"],
-        onDelete: "cascade"
-      }]
-    } as AstTableConstraintComposition)
+      constraintType: "foreignKey",
+      columns: ["a", "b"],
+      referencedTable: "other_table",
+      referencedColumns: ["c", "d"],
+      onDelete: "cascade"
+    } as AstForeignKeyTableConstraint)
   })
 
   test("table constraint: unique constraint", () => {
@@ -120,12 +112,10 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
-      constraints: [{
-        constraintType: "unique",
-        columns: ["a", "b"]
-      }]
-    } as AstTableConstraintComposition)
+      entryType: "constraint",
+      constraintType: "unique",
+      columns: ["a", "b"]
+    } as AstUniqueTableConstraint)
   })
 
   test("table constraint: named unique constraint", () => {
@@ -137,13 +127,11 @@ describe("AST Specification for tables", () => {
       `
     const table = parseDdlToAst(input).orders[0] as AstCreateTable
     expect(table.entries[1]).toEqual({
-      entryType: "constraintComposition",
+      entryType: "constraint",
       name: "u1",
-      constraints: [{
-        constraintType: "unique",
-        columns: ["a", "b"]
-      }]
-    } as AstTableConstraintComposition)
+      constraintType: "unique",
+      columns: ["a", "b"]
+    } as AstUniqueTableConstraint)
   })
 
   test("alter table add foreign key", () => {
@@ -155,13 +143,11 @@ describe("AST Specification for tables", () => {
       orderType: "alterTable",
       table: "t1",
       add: [{
-        entryType: "constraintComposition",
-        constraints: [{
-          constraintType: "foreignKey",
-          columns: ["a", "b"],
-          referencedTable: "t2",
-          referencedColumns: ["c", "d"]
-        }]
+        entryType: "constraint",
+        constraintType: "foreignKey",
+        columns: ["a", "b"],
+        referencedTable: "t2",
+        referencedColumns: ["c", "d"]
       }]
     } as AstAlterTable)
   })
@@ -175,14 +161,12 @@ describe("AST Specification for tables", () => {
       orderType: "alterTable",
       table: "t1",
       add: [{
-        entryType: "constraintComposition",
+        entryType: "constraint",
         name: "fk1",
-        constraints: [{
-          constraintType: "foreignKey",
-          columns: ["a", "b"],
-          referencedTable: "t2",
-          referencedColumns: ["c", "d"]
-        }]
+        constraintType: "foreignKey",
+        columns: ["a", "b"],
+        referencedTable: "t2",
+        referencedColumns: ["c", "d"]
       }]
     } as AstAlterTable)
   })
@@ -195,8 +179,8 @@ describe("AST Specification for tables", () => {
     expect(ast.orders[0]).toEqual({
       orderType: "createIndex",
       table: "t1",
-      name: "idx1",
       index: {
+        name: "idx1",
         columns: ["a", "b"]
       }
     } as AstCreateIndex)
@@ -210,9 +194,9 @@ describe("AST Specification for tables", () => {
     expect(ast.orders[0]).toEqual({
       orderType: "createIndex",
       table: "t1",
-      name: "u1",
       index: {
         constraintType: "unique",
+        name: "u1",
         columns: ["a", "b"]
       }
     } as AstCreateIndex)
@@ -227,11 +211,9 @@ describe("AST Specification for tables", () => {
       orderType: "alterTable",
       table: "t1",
       add: [{
-        entryType: "constraintComposition",
-        constraints: [{
-          constraintType: "unique",
-          columns: ["a", "b"]
-        }]
+        entryType: "constraint",
+        constraintType: "unique",
+        columns: ["a", "b"]
       }]
     } as AstAlterTable)
   })
@@ -245,12 +227,10 @@ describe("AST Specification for tables", () => {
       orderType: "alterTable",
       table: "t1",
       add: [{
-        entryType: "constraintComposition",
+        entryType: "constraint",
         name: "u1",
-        constraints: [{
-          constraintType: "unique",
-          columns: ["a", "b"]
-        }]
+        constraintType: "unique",
+        columns: ["a", "b"]
       }]
     } as AstAlterTable)
   })

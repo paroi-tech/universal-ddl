@@ -1,10 +1,6 @@
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstDataType, AstOrder, AstTableConstraint, AstTableEntry, AstValue } from "../ast"
 import { hasColumnConstraint, isDataTypeDateOrTime, isDataTypeInteger, isDataTypeNumber, isDataTypeString } from "../ast-helpers"
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstDataType, AstOrder, AstTableConstraint, AstTableConstraintComposition, AstTableEntry, AstValue } from "../parser/ast"
-
-export interface ConsistencyCheckerReport {
-  valid: boolean
-  errors?: string[]
-}
+import { ConsistencyCheckerReport } from "../exported-definitions"
 
 interface CheckedTable {
   name: string
@@ -113,13 +109,11 @@ export default class ConsistencyChecker {
         }
       }
     }
-    for (const entry of entries.filter(({ entryType }) => entryType === "constraintComposition")) {
-      const constraints = (entry as AstTableConstraintComposition).constraints
-      const pk = constraints.find(({ constraintType }) => constraintType === "primaryKey")
-      if (pk) {
-        const pkColumn = this.findColumns(pk.columns, checkedTable)
-        if (pkColumn)
-          this.setPrimaryKeyOn(checkedTable, pkColumn)
+    for (const constraint of entries.filter(({ entryType }) => entryType === "constraint") as AstTableConstraint[]) {
+      if (constraint.constraintType === "primaryKey") {
+        const pkColumns = this.findColumns(constraint.columns, checkedTable)
+        if (pkColumns)
+          this.setPrimaryKeyOn(checkedTable, pkColumns)
       }
     }
   }
@@ -137,10 +131,8 @@ export default class ConsistencyChecker {
         case "column":
           this.checkColumn(entry, checkedTable)
           break
-        case "constraintComposition":
-          entry.constraints.forEach(
-            constraint => this.checkTableConstraint(constraint, checkedTable)
-          )
+        case "constraint":
+          this.checkTableConstraint(entry, checkedTable)
           break
         case "comment":
           break
@@ -154,11 +146,9 @@ export default class ConsistencyChecker {
     const column = checkedTable.columns.get(node.name)
     if (!column)
       throw new Error(`Missing column "${node.name}" in table "${checkedTable.name}"`)
-    if (node.constraintCompositions) {
-      node.constraintCompositions.forEach(
-        ({ constraints }) => constraints.forEach(
-          constraint => this.checkColumnConstraint(constraint, column, checkedTable)
-        )
+    if (node.constraints) {
+      node.constraints.forEach(
+        constraint => this.checkColumnConstraint(constraint, column, checkedTable)
       )
     }
   }

@@ -1,7 +1,8 @@
+import { AstColumn } from "../ast"
 import { hasColumnConstraint, isDataTypeInteger } from "../ast-helpers"
-import { AstColumn, AstDataType } from "../parser/ast"
+import { GeneratorOptions } from "../exported-definitions";
 import { makeGeneratorContext } from "./gen-helpers"
-import { CodeBlock, GeneratorContext, GeneratorOptions, InlineCode } from "./index"
+import { CodeBlock, GeneratorContext, InlineCode } from "./index"
 import { normalizeInlineComment, toCodeBlockComment, universalDdlSections as parent } from "./universal-ddl-generator"
 
 export function makeSqliteDdlGeneratorContext(options: GeneratorOptions): GeneratorContext {
@@ -20,17 +21,14 @@ export function makeSqliteDdlGeneratorContext(options: GeneratorOptions): Genera
         }
         const type = "integer"
 
-        let compos = (node.constraintCompositions || []).map(
-          compo => (cx.gen("columnChildren", "constraintComposition", compo) as InlineCode).code
-        ).join(" ")
-        if (compos)
-          compos = ` ${compos}`
+        let constraints = (cx.gen("columnChildren", "constraints", node.constraints || []) as InlineCode).code
+        constraints = constraints ? ` ${constraints}` : ""
 
         return {
           lines: [
             toCodeBlockComment(node.blockComment),
             {
-              code: `${node.name} ${type}${compos}`,
+              code: `${node.name} ${type}${constraints}`,
               inlineComment: normalizeInlineComment(node.inlineComment)
             },
           ]

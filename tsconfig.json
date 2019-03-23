@@ -11,7 +11,8 @@
     "moduleResolution": "node",
     "outDir": "dist",
     "noEmitOnError": true,
-    // "esModuleInterop": true
+    "declaration": true,
+    "declarationDir": "bundle-tsd/declarations"
   },
   "include": [
     "src"

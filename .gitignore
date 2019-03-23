@@ -1,5 +1,9 @@
 node_modules
+
+.npmrc
+/dist
+/bundle-tsd/declarations
+
 /.antlr
 /antlr-*.jar
 /antlr-parser
-/dist

@@ -1,6 +1,7 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstDefaultColumnConstraint, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstPrimaryKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableConstraintComposition, AstUniqueTableConstraint, AstValue } from "../parser/ast"
+import { Ast, AstAlterTable, AstAutoincrementColumnConstraint, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstDefaultColumnConstraint, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstNotNullColumnConstraint, AstNullColumnConstraint, AstPrimaryKeyColumnConstraint, AstPrimaryKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableConstraint, AstUniqueColumnConstraint, AstUniqueTableConstraint, AstValue } from "../ast"
+import { GeneratorOptions } from "../exported-definitions"
 import { appendSuffix, makeGeneratorContext, tryToMakeInlineBlock } from "./gen-helpers"
-import { CodeBlock, GeneratorContext, GeneratorOptions, InlineCode } from "./index"
+import { CodeBlock, GeneratorContext, InlineCode } from "./index"
 
 export function makeUniversalDdlGeneratorContext(options: GeneratorOptions): GeneratorContext {
   return makeGeneratorContext(options, universalDdlSections)
@@ -73,7 +74,7 @@ const orders = {
   },
 
   createIndex(cx: GeneratorContext, node: AstCreateIndex): CodeBlock {
-    const name = node.name ? ` ${node.name}` : ""
+    const name = node.index.name ? ` ${node.index.name}` : ""
     const columns = node.index.columns.join(", ")
     const unique = node.index["constraintType"] === "unique" ? " unique" : ""
     return {
@@ -98,52 +99,22 @@ const tableEntries = {
     if (node.typeArgs)
       type += `(${node.typeArgs.join(",")})`
 
-    let compos = (node.constraintCompositions || []).map(
-      compo => (cx.gen("columnChildren", "constraintComposition", compo) as InlineCode).code
-    ).join(" ")
-    if (compos)
-      compos = ` ${compos}`
+    let constraints = (cx.gen("columnChildren", "constraints", node.constraints || []) as InlineCode).code
+    constraints = constraints ? ` ${constraints}` : ""
 
     return {
       lines: [
         toCodeBlockComment(node.blockComment),
         {
-          code: `${node.name} ${type}${compos}`,
+          code: `${node.name} ${type}${constraints}`,
           inlineComment: normalizeInlineComment(node.inlineComment)
         },
       ]
     }
   },
 
-  constraintComposition(cx: GeneratorContext, node: AstTableConstraintComposition): CodeBlock {
-    const constraintName = node.name ? `constraint ${node.name} ` : undefined
-    const constraints = node.constraints.map(
-      constraint => cx.gen("tableConstraints", constraint.constraintType, constraint) as CodeBlock
-    )
-    appendSuffix(constraints, { notLast: "," })
-    const inlineComment = normalizeInlineComment(node.inlineComment)
-    const ib = tryToMakeInlineBlock(constraints, inlineComment)
-    if (ib) {
-      return {
-        lines: [
-          toCodeBlockComment(node.blockComment),
-          {
-            ...ib,
-            code: constraintName ? constraintName + ib.code : ib.code
-          }
-        ]
-      }
-    }
-    return {
-      lines: [
-        toCodeBlockComment(node.blockComment),
-        {
-          code: constraintName,
-          inlineComment: normalizeInlineComment(node.inlineComment)
-        },
-        ...constraints
-      ]
-    }
+  constraint(cx: GeneratorContext, node: AstTableConstraint): CodeBlock {
+    return cx.gen("tableConstraints", node.constraintType, node) as CodeBlock
   },
 
   comment(cx: GeneratorContext, node: AstStandaloneTableComment): CodeBlock {
@@ -152,24 +123,24 @@ const tableEntries = {
 }
 
 const columnChildren = {
-  constraintComposition(cx: GeneratorContext, node: AstColumnConstraintComposition): InlineCode {
-    const constraintName = node.name ? `constraint ${node.name} ` : ""
-    const constraints = node.constraints.map(
+  constraints(cx: GeneratorContext, nodes: AstColumnConstraint[]): InlineCode {
+    const constraints = nodes.map(
       constraint => (cx.gen("columnConstraints", constraint.constraintType, constraint) as InlineCode).code
     ).join(" ")
     return {
-      code: `${constraintName}${constraints}`
+      code: constraints
     }
   }
 }
 
 const tableConstraints = {
   primaryKey(cx: GeneratorContext, node: AstPrimaryKeyTableConstraint): CodeBlock {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
     return {
       lines: [
         toCodeBlockComment(node.blockComment),
         {
-          code: `primary key (${node.columns.join(", ")})`,
+          code: `${constraintName}primary key (${node.columns.join(", ")})`,
           inlineComment: normalizeInlineComment(node.inlineComment)
         },
       ]
@@ -177,6 +148,7 @@ const tableConstraints = {
   },
 
   foreignKey(cx: GeneratorContext, node: AstForeignKeyTableConstraint): CodeBlock {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
     const refColumns = node.referencedColumns ? ` (${node.referencedColumns.join(", ")})` : ""
     const del = node.onDelete ? ` on delete ${node.onDelete}` : ""
     const upd = node.onUpdate ? ` on update ${node.onUpdate}` : ""
@@ -185,7 +157,7 @@ const tableConstraints = {
       lines: [
         toCodeBlockComment(node.blockComment),
         {
-          code: `foreign key (${node.columns.join(", ")}) ${ref}${del}${upd}`,
+          code: `${constraintName}foreign key (${node.columns.join(", ")}) ${ref}${del}${upd}`,
           inlineComment: normalizeInlineComment(node.inlineComment)
         },
       ]
@@ -193,11 +165,12 @@ const tableConstraints = {
   },
 
   unique(cx: GeneratorContext, node: AstUniqueTableConstraint): CodeBlock {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
     return {
       lines: [
         toCodeBlockComment(node.blockComment),
         {
-          code: `unique (${node.columns.join(", ")})`,
+          code: `${constraintName}unique (${node.columns.join(", ")})`,
           inlineComment: normalizeInlineComment(node.inlineComment)
         },
       ]
@@ -206,29 +179,36 @@ const tableConstraints = {
 }
 
 const columnConstraints = {
-  notNull(): InlineCode {
-    return { code: "not null" }
+  notNull(cx: GeneratorContext, node: AstNotNullColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}not null` }
   },
-  null(): InlineCode {
-    return { code: "null" }
+  null(cx: GeneratorContext, node: AstNullColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}null` }
   },
-  default(cx: GeneratorContext, { value }: AstDefaultColumnConstraint): InlineCode {
-    return { code: `default ${toSqlValue(value)}` }
+  default(cx: GeneratorContext, node: AstDefaultColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}default ${toSqlValue(node.value)}` }
   },
-  primaryKey(): InlineCode {
-    return { code: "primary key" }
+  primaryKey(cx: GeneratorContext, node: AstPrimaryKeyColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}primary key` }
   },
-  autoincrement(): InlineCode {
-    return { code: "autoincrement" }
+  autoincrement(cx: GeneratorContext, node: AstAutoincrementColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}autoincrement` }
   },
-  unique(): InlineCode {
-    return { code: "unique" }
+  unique(cx: GeneratorContext, node: AstUniqueColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
+    return { code: `${constraintName}unique` }
   },
   foreignKey(cx: GeneratorContext, node: AstForeignKeyColumnConstraint): InlineCode {
+    const constraintName = node.name ? `constraint ${node.name} ` : ""
     const del = node.onDelete ? ` on delete ${node.onDelete}` : ""
     const upd = node.onUpdate ? ` on update ${node.onUpdate}` : ""
     const refCol = node.referencedColumn ? ` (${node.referencedColumn})` : ""
-    return { code: `references ${node.referencedTable}${refCol}${del}${upd}` }
+    return { code: `${constraintName}references ${node.referencedTable}${refCol}${del}${upd}` }
   },
 }
 

@@ -38,11 +38,24 @@ describe("Dialect Generator Specification for MariaDB", () => {
 
   test(`foreign keys: replace column constraint by table constraint #3`, () => {
     const input = `create table t1 (
-  a integer references t2
+  a integer references t2 (a)
 );`
     const output = `create table t1 (
   a integer,
+  foreign key (a) references t2 (a)
+);`
+    const ast = parseDdl(input, { freeze: true })
+    expect(generateDdl(ast, "mariadb")).toEqual(output)
+  })
+
+  test(`foreign keys: add referenced columns`, () => {
+    const input = `create table t1 (
+  a integer,
   foreign key (a) references t2
+);`
+    const output = `create table t1 (
+  a integer,
+  foreign key (a) references t2 (a)
 );`
     const ast = parseDdl(input, { freeze: true })
     expect(generateDdl(ast, "mariadb")).toEqual(output)

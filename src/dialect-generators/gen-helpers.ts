@@ -1,10 +1,14 @@
-import { AstModifier } from "../ast-modifier/ast-modifier"
-import { CodeBlock, CodePiece, GeneratorContext, GeneratorOptions, GenSections, InlineCode } from "./index"
+import { GeneratorOptions } from "../exported-definitions"
+import { CodeBlock, CodePiece, CreateModifiers, GeneratorContext, GenSections, InlineCode } from "./index"
 
-export function makeGeneratorContext(options: GeneratorOptions, sections: GenSections, modifiers?: AstModifier[]): GeneratorContext {
+export function makeGeneratorContext(
+  options: GeneratorOptions,
+  sections: GenSections,
+  createModifiers?: CreateModifiers
+): GeneratorContext {
   const cx: GeneratorContext = {
     sections,
-    modifiers,
+    createModifiers,
     options: {
       ...defaultOptions,
       ...options
@@ -22,7 +26,8 @@ export function makeGeneratorContext(options: GeneratorOptions, sections: GenSec
 }
 
 const defaultOptions: Required<GeneratorOptions> = {
-  indentUnit: "  "
+  indentUnit: "  ",
+  generateDrop: false
 }
 
 export function indentation(cx: GeneratorContext, level: number) {
@@ -53,22 +58,30 @@ export function isInlineCode(code: CodePiece): code is InlineCode {
   return !!(code && !code["lines"])
 }
 
-function codeBlockToString(cx: GeneratorContext, block: CodeBlock, parentIndent = 0, spaceMode?: "spaced" | "cancel"): string {
+type SpaceMode = "spaced" | "cancel" | "cancelBefore" | "cancelAfter"
+
+function codeBlockToString(cx: GeneratorContext, block: CodeBlock, parentIndent = 0, spaceMode?: SpaceMode): string {
   const { indent, lines, spaceBefore, spaceAfter } = block
   const curIndent = (indent || 0) + parentIndent
-  const content = lines.map(item => {
+  const lastIndex = lines.length - 1
+  const content = lines.map((item, index) => {
     if (!item)
       return
     const prefix = indentation(cx, curIndent)
-    if (isCodeBlock(item))
-      return codeBlockToString(cx, item, curIndent, spaceMode === "spaced" ? "cancel" : undefined)
-    else
+    if (isCodeBlock(item)) {
+      let childSpace: SpaceMode | undefined
+      if (spaceMode === "spaced")
+        childSpace = "cancel"
+      else
+        childSpace = index === 0 ? "cancelBefore" : index === lastIndex ? "cancelAfter" : undefined
+      return codeBlockToString(cx, item, curIndent, childSpace)
+    } else
       return prefix + codeLineToString(item)
   }).filter(line => !!line).join(spaceMode === "spaced" ? "\n\n" : "\n")
   if (spaceMode === "cancel")
     return content
-  const prefix = spaceBefore ? "\n" : ""
-  const suffix = spaceAfter ? "\n" : ""
+  const prefix = spaceBefore && spaceMode !== "cancelBefore" ? "\n" : ""
+  const suffix = spaceAfter && spaceMode !== "cancelAfter" ? "\n" : ""
   return prefix + content + suffix
 }
 
@@ -86,7 +99,7 @@ export function appendSuffix<T extends CodePiece>(items: T[], options: AppendSuf
   let isLast = true
   for (let i = items.length - 1; i >= 0; --i) {
     const item = items[i]
-    if (isEmptyCodePiece(item))
+    if (isEmptyCodePiece(item, true))
       continue
     if (isLast) {
       isLast = false
@@ -99,13 +112,13 @@ export function appendSuffix<T extends CodePiece>(items: T[], options: AppendSuf
   return items
 }
 
-export function isEmptyCodePiece(item: CodePiece): boolean {
+export function isEmptyCodePiece(item: CodePiece, ignoreComments = false): boolean {
   if (!item)
     return true
   if (isCodeBlock(item))
-    return !item.lines.find(child => !isEmptyCodePiece(child))
+    return !item.lines.find(child => !isEmptyCodePiece(child, ignoreComments))
   else
-    return !item.code && !item.inlineComment
+    return !item.code && (ignoreComments || !item.inlineComment)
 }
 
 function appendSuffixToCodePiece(item: CodePiece, suffix: string) {

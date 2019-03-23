@@ -1,24 +1,25 @@
+import { Ast } from "./ast"
 import { AstModifier, modifyAst } from "./ast-modifier/ast-modifier"
 import { autofixFk } from "./ast-modifier/modifiers/autofix-fk"
-import ConsistencyChecker, { ConsistencyCheckerReport } from "./consistency-checker/ConsistencyChecker"
+import ConsistencyChecker from "./consistency-checker/ConsistencyChecker"
 import { generateDdl } from "./dialect-generators"
-import { Ast } from "./parser/ast"
+import { ConsistencyCheckerReport } from "./exported-definitions";
 import { parseDdlToAst } from "./parser/parse-ddl"
-import { Rds } from "./rds/rds"
-import { createRdsFromAst } from "./rds/rds-provider"
+import { Rds } from "./rds"
+import { createRdsFromAst } from "./rds-provider/rds-provider"
 
-export { generateDdl, ConsistencyCheckerReport }
+export { generateDdl }
 
 export interface ParseDdlOptions {
-  autofix?: AutofixOptions
-  freeze?: boolean
+  autofix?: boolean | AutofixOptions
   checkConsistency?: boolean
+  freeze?: boolean
 }
 
 export function parseDdl(source: string, options: ParseDdlOptions = {}): Ast {
   let ast = parseDdlToAst(source)
   if (options.autofix)
-    ast = autofix(ast, options.autofix)
+    ast = autofix(ast, options.autofix === true ? undefined : options.autofix)
   if (options.checkConsistency) {
     const report = checkConsistency(ast)
     if (!report.valid)
@@ -31,10 +32,10 @@ export interface AutofixOptions {
   foreignKeys?: boolean
 }
 
-export function autofix(input: Ast, options: AutofixOptions): Ast {
+export function autofix(input: Ast, options?: AutofixOptions): Ast {
   const modifiers: AstModifier[] = []
   const afterEndListeners: Array<() => void> = []
-  if (options.foreignKeys) {
+  if (!options || options.foreignKeys) {
     const { astModifiers, afterEnd } = autofixFk()
     modifiers.push(...astModifiers)
     if (afterEnd)
@@ -55,7 +56,7 @@ export function checkConsistency(ast: Ast): ConsistencyCheckerReport {
 }
 
 export interface ParseDdlToRdsOptions {
-  autofix?: AutofixOptions
+  autofix?: boolean | AutofixOptions
   freeze?: boolean
 }
 
@@ -74,6 +75,11 @@ export interface CreateRdsOptions {
 }
 
 export function createRds(ast: Ast, options: CreateRdsOptions = {}): Rds {
+  if (options.checkConsistency) {
+    const report = checkConsistency(ast)
+    if (!report.valid)
+      throw new Error(report.errors!.join("\n"))
+  }
   const rds = createRdsFromAst(ast)
   return options.freeze ? deepFreezePojo(rds) : rds
 }

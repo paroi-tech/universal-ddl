@@ -1,9 +1,6 @@
 const { UniversalDdlListener } = require("../../antlr-parser/UniversalDdlListener")
-import { AntlrAnyRuleContext, AntlrRuleContext, AntlrTokenStream, ruleNameOf } from "./antlr4-utils"
-import {
-  Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCommentable, AstCreateIndex,
-  AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableConstraintComposition, AstTableEntry, AstValue
-} from "./ast"
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstPrimaryKeyTableConstraint, AstStandaloneComment, AstStandaloneTableComment, AstTableEntry, AstUniqueTableConstraint, AstValue } from "../ast"
+import { AntlrAnyRuleContext, AntlrTokenStream, ruleNameOf } from "./antlr4-utils"
 import CommentGrabber, { GrabbedCommentsResult } from "./CommentGrabber"
 
 export interface DdlParsingContext {
@@ -19,7 +16,7 @@ export interface DdlParsingContext {
   }
 }
 
-export default class DdlExtractor extends UniversalDdlListener {
+export default class DdlExtractor extends (UniversalDdlListener as any) {
   ast?: Ast
   private currentEntries?: AstTableEntry[]
   private currentColumn?: AstColumn
@@ -78,6 +75,8 @@ export default class DdlExtractor extends UniversalDdlListener {
     }
     if (ctx.KW_UNIQUE())
       index.constraintType = "unique"
+    if (ctx.indexName)
+      index.name = getIdentifierText(ctx.indexName)
 
     const createIndex: AstCreateIndex = {
       orderType: "createIndex",
@@ -85,8 +84,6 @@ export default class DdlExtractor extends UniversalDdlListener {
       index
     }
     this.addStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: createIndex }))
-    if (ctx.indexName)
-      createIndex.name = getIdentifierText(ctx.indexName)
     this.ast!.orders.push(createIndex)
   }
 
@@ -123,44 +120,35 @@ export default class DdlExtractor extends UniversalDdlListener {
     if (!ctx.children)
       return
 
-    const constraintCompositions: AstColumnConstraintComposition[] = []
-    let composition: AstColumnConstraintComposition | undefined
+    const constraints: AstColumnConstraint[] = []
 
     for (const childCtx of ctx.children) {
-      if (!composition || childCtx.constraintName) {
-        composition = {
-          constraints: []
-        }
-        if (childCtx.constraintName)
-          composition.name = getIdentifierText(childCtx.constraintName)
-        constraintCompositions.push(composition)
-      }
-
+      let constraint: AstColumnConstraint | undefined
       switch (ruleNameOf(childCtx)) {
         case "KW_NOT_NULL":
-          composition.constraints.push({
+          constraint = {
             constraintType: "notNull"
-          })
+          }
           break
         case "KW_NULL":
-          composition.constraints.push({
+          constraint = {
             constraintType: "null"
-          })
+          }
           break
         case "KW_AUTOINCREMENT":
-          composition.constraints.push({
+          constraint = {
             constraintType: "autoincrement"
-          })
+          }
           break
         case "primaryKeyColumnConstraintDef":
-          composition.constraints.push({
+          constraint = {
             constraintType: "primaryKey"
-          })
+          }
           break
         case "uniqueColumnConstraintDef":
-          composition.constraints.push({
+          constraint = {
             constraintType: "unique"
-          })
+          }
           break
         case "foreignKeyColumnConstraintDef":
           const fkConstraint: AstForeignKeyColumnConstraint = {
@@ -171,74 +159,70 @@ export default class DdlExtractor extends UniversalDdlListener {
             fkConstraint.referencedColumn = getIdentifierText(childCtx.referencedColumn)
           if (childCtx.onDelete && childCtx.onDelete.KW_CASCADE())
             fkConstraint.onDelete = "cascade"
-          composition.constraints.push(fkConstraint)
+          constraint = fkConstraint
           break
         case "defaultSpec":
           if (!childCtx.children[1])
             throw new Error("Missing default value")
-          composition.constraints.push({
+          constraint = {
             constraintType: "default",
             value: buildDefaultValue(childCtx.children[1])
-          })
+          }
           break
         default:
           throw new Error(`Unexpected column constraint: ${childCtx.getText()}`)
       }
+      if (childCtx.constraintName)
+        constraint.name = getIdentifierText(childCtx.constraintName)
+      constraints.push(constraint)
     }
 
-    if (constraintCompositions.length > 0)
-      this.currentColumn!.constraintCompositions = constraintCompositions
+    if (constraints.length > 0)
+      this.currentColumn!.constraints = constraints
   }
 
   enterTableUniqueConstraintDef(ctx: AntlrAnyRuleContext) {
     const constraintCtx = ctx.uniqueConstraintDef()
-    const composition: AstTableConstraintComposition = {
-      entryType: "constraintComposition",
-      constraints: [{
-        constraintType: "unique",
-        columns: getTextsOfIdentifierList(constraintCtx.identifierList())
-      }]
+    const constraint: AstUniqueTableConstraint = {
+      entryType: "constraint",
+      constraintType: "unique",
+      columns: getTextsOfIdentifierList(constraintCtx.identifierList())
     }
     if (constraintCtx.constraintName)
-      composition.name = getIdentifierText(constraintCtx.constraintName)
-    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
-    this.currentEntries!.push(composition)
+      constraint.name = getIdentifierText(constraintCtx.constraintName)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: constraint }))
+    this.currentEntries!.push(constraint)
   }
 
   enterTablePrimaryKeyConstraintDef(ctx: AntlrAnyRuleContext) {
     const constraintCtx = ctx.primaryKeyConstraintDef()
-    const composition: AstTableConstraintComposition = {
-      entryType: "constraintComposition",
-      constraints: [{
-        constraintType: "primaryKey",
-        columns: getTextsOfIdentifierList(constraintCtx.identifierList())
-      }]
+    const constraint: AstPrimaryKeyTableConstraint = {
+      entryType: "constraint",
+      constraintType: "primaryKey",
+      columns: getTextsOfIdentifierList(constraintCtx.identifierList())
     }
     if (constraintCtx.constraintName)
-      composition.name = getIdentifierText(constraintCtx.constraintName)
-    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
-    this.currentEntries!.push(composition)
+      constraint.name = getIdentifierText(constraintCtx.constraintName)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: constraint }))
+    this.currentEntries!.push(constraint)
   }
 
   enterTableForeignKeyConstraintDef(ctx: AntlrAnyRuleContext) {
     const constraintCtx = ctx.foreignKeyConstraintDef()
-    const fkConstraint: AstForeignKeyTableConstraint = {
+    const constraint: AstForeignKeyTableConstraint = {
+      entryType: "constraint",
       constraintType: "foreignKey",
       columns: getTextsOfIdentifierList(constraintCtx.columns),
       referencedTable: getIdentifierText(constraintCtx.referencedTable)
     }
     if (constraintCtx.referencedColumns)
-      fkConstraint.referencedColumns = getTextsOfIdentifierList(constraintCtx.referencedColumns)
-    const composition: AstTableConstraintComposition = {
-      entryType: "constraintComposition",
-      constraints: [fkConstraint]
-    }
-    if (constraintCtx.constraintName)
-      composition.name = getIdentifierText(constraintCtx.constraintName)
+      constraint.referencedColumns = getTextsOfIdentifierList(constraintCtx.referencedColumns)
     if (constraintCtx.onDelete && constraintCtx.onDelete.KW_CASCADE())
-      fkConstraint.onDelete = "cascade"
-    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: composition }))
-    this.currentEntries!.push(composition)
+      constraint.onDelete = "cascade"
+    if (constraintCtx.constraintName)
+      constraint.name = getIdentifierText(constraintCtx.constraintName)
+    this.addToEntriesStandaloneCommentsBefore(this.comments.grabComments(ctx, { annotate: constraint }))
+    this.currentEntries!.push(constraint)
   }
 
   private addStandaloneCommentsBefore({ standaloneCommentsBefore }: GrabbedCommentsResult) {

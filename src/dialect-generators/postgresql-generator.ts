@@ -1,7 +1,9 @@
-import { removeSelectedColumnConstraints } from "../ast-modifier/modifier-helpers"
-import { AstColumn, AstColumnConstraintComposition, AstDataType } from "../parser/ast"
+import { AstColumn, AstColumnConstraint, AstDataType } from "../ast"
+import { removeSelectedItems } from "../ast-modifier/modifier-helpers"
+import { makeColumnTypeReplacer } from "../ast-modifier/modifiers/column-type"
+import { GeneratorOptions } from "../exported-definitions"
 import { makeGeneratorContext } from "./gen-helpers"
-import { CodeBlock, GeneratorContext, GeneratorOptions, InlineCode } from "./index"
+import { CodeBlock, GeneratorContext, InlineCode } from "./index"
 import { normalizeInlineComment, toCodeBlockComment, universalDdlSections as parent } from "./universal-ddl-generator"
 
 export function makePostgresqlDdlGeneratorContext(options: GeneratorOptions): GeneratorContext {
@@ -14,17 +16,14 @@ export function makePostgresqlDdlGeneratorContext(options: GeneratorOptions): Ge
         if (!pgc)
           return parent.tableEntries.column(cx, node)
 
-        let compos = (pgc.constraintCompositions || []).map(
-          compo => (cx.gen("columnChildren", "constraintComposition", compo) as InlineCode).code
-        ).join(" ")
-        if (compos)
-          compos = ` ${compos}`
+        let constraints = (cx.gen("columnChildren", "constraints", pgc.constraints || []) as InlineCode).code
+        constraints = constraints ? ` ${constraints}` : ""
 
         return {
           lines: [
             toCodeBlockComment(node.blockComment),
             {
-              code: `${node.name} ${pgc.type}${compos}`,
+              code: `${node.name} ${pgc.type}${constraints}`,
               inlineComment: normalizeInlineComment(node.inlineComment)
             },
           ]
@@ -40,25 +39,30 @@ export function makePostgresqlDdlGeneratorContext(options: GeneratorOptions): Ge
       },
     }
   }
-  return makeGeneratorContext(options, sections)
+
+  const modifier = makeColumnTypeReplacer(type => {
+    return type === "tinyint" ? "smallint" : type
+  })
+
+  return makeGeneratorContext(options, sections, () => [modifier])
 }
 
 interface PgColumn {
   type: string
-  constraintCompositions?: AstColumnConstraintComposition[]
+  constraints: AstColumnConstraint[] | undefined
 }
 
 function pgColumn(node: AstColumn): PgColumn | undefined {
   const type = toSerialType(node.type)
-  if (!type || !node.constraintCompositions)
+  if (!type || !node.constraints)
     return
-  const found = findAutoincrementNotNullConstraints(node.constraintCompositions)
+  const found = findAutoincrementNotNullConstraints(node.constraints)
   if (!found)
     return
-  const constraintCompositions = removeSelectedColumnConstraints(Object.values(found), node.constraintCompositions)
+  const constraints = removeSelectedItems(Object.values(found), node.constraints)
   return {
     type,
-    constraintCompositions
+    constraints
   }
 }
 
@@ -70,27 +74,17 @@ function toSerialType(type: AstDataType): string | undefined {
 }
 
 interface FoundConstraints {
-  [constraintType: string]: {
-    compoIndex: number
-    constraintIndex: number
-  }
+  [constraintType: string]: number
 }
 
-function findAutoincrementNotNullConstraints(compos: AstColumnConstraintComposition[]): FoundConstraints | undefined {
-  const found: FoundConstraints = compos.reduce((found: FoundConstraints, compo, compoIndex) => {
-    found = compo.constraints.reduce((found: FoundConstraints, { constraintType }, constraintIndex) => {
-      if (constraintType === "autoincrement" || constraintType === "notNull") {
-        found[constraintType] = {
-          compoIndex,
-          constraintIndex,
-        }
-      }
-      return found
-    }, found)
+function findAutoincrementNotNullConstraints(constraints: AstColumnConstraint[]): FoundConstraints | undefined {
+  const found = constraints.reduce((found: FoundConstraints, { constraintType }, constraintIndex) => {
+    if (constraintType === "autoincrement" || constraintType === "notNull")
+      found[constraintType] = constraintIndex
     return found
   }, {} as FoundConstraints)
-  if (found["autoincrement"]) {
-    if (!found["notNull"])
+  if (found["autoincrement"] !== undefined) {
+    if (found["notNull"] === undefined)
       throw new Error("Constraint 'not null' is required with 'autoincrement' for Postgresql")
     return found
   }

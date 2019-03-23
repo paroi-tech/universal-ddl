@@ -3,6 +3,7 @@
   "extends": [
     "tslint:recommended"
   ],
+  "jsRules": true,
   "linterOptions": {
     "exclude": [
       "node_modules/**",

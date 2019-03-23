@@ -22,4 +22,15 @@ describe("Dialect Generator Specification for Postgresql", () => {
     const ast = parseDdl(input, { freeze: true })
     expect(generateDdl(ast, "postgresql")).toEqual(output)
   })
+
+  test(`convert 'tinyint' to 'smallint'`, () => {
+    const input = `create table t1 (
+  a tinyint
+);`
+    const output = `create table t1 (
+  a smallint
+);`
+    const ast = parseDdl(input, { freeze: true })
+    expect(generateDdl(ast, "postgresql")).toEqual(output)
+  })
 })

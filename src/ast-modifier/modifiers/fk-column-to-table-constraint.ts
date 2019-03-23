@@ -1,5 +1,5 @@
-import { removeSelectedColumnConstraints } from "../../ast-modifier/modifier-helpers"
-import { AstColumn, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTableConstraintComposition, AstTableEntry } from "../../parser/ast"
+import { AstColumn, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstTableConstraint, AstTableEntry } from "../../ast"
+import { removeSelectedItems } from "../../ast-modifier/modifier-helpers"
 import { AstModifier } from "../ast-modifier"
 
 export const fkColumnToTableConstraintModifier: AstModifier = {
@@ -13,60 +13,64 @@ export const fkColumnToTableConstraintModifier: AstModifier = {
 }
 
 interface FoundColumnFk {
-  compoIndex: number
   constraintIndex: number
   fk: AstForeignKeyColumnConstraint
 }
 
-function findAllColumnForeignKeys(entries: AstTableEntry[]): Map<AstColumn, FoundColumnFk> {
-  const result = new Map<AstColumn, FoundColumnFk>()
+function findAllColumnForeignKeys(entries: AstTableEntry[]): Map<AstColumn, FoundColumnFk[]> {
+  const result = new Map<AstColumn, FoundColumnFk[]>()
   for (const entry of entries) {
-    if (entry.entryType !== "column" || !entry.constraintCompositions)
+    if (entry.entryType !== "column" || !entry.constraints)
       continue
-    entry.constraintCompositions.forEach(({ constraints }, compoIndex) => {
-      constraints.forEach((constraint, constraintIndex) => {
-        if (constraint.constraintType === "foreignKey") {
-          result.set(entry, {
-            compoIndex,
-            constraintIndex,
-            fk: constraint
-          })
+    entry.constraints.forEach((constraint, constraintIndex) => {
+      if (constraint.constraintType === "foreignKey") {
+        let list = result.get(entry)
+        if (!list) {
+          list = []
+          result.set(entry, list)
         }
-      })
+        list.push({
+          constraintIndex,
+          fk: constraint
+        })
+      }
     })
   }
   return result
 }
 
-function replaceFkColumnConstraintsWithTableConstraints(found: Map<AstColumn, FoundColumnFk>, entries: AstTableEntry[]) {
+function replaceFkColumnConstraintsWithTableConstraints(found: Map<AstColumn, FoundColumnFk[]>, entries: AstTableEntry[]) {
   const updated: AstTableEntry[] = []
   for (const entry of entries) {
-    const fcfk = entry.entryType === "column" && found.get(entry)
-    if (!fcfk)
+    const foundFkList = entry.entryType === "column" && found.get(entry)
+    if (!foundFkList)
       updated.push(entry)
     else {
       const column = entry as AstColumn
-      const constraintCompositions = removeSelectedColumnConstraints([fcfk], column.constraintCompositions!)
-      updated.push({
-        ...column,
-        constraintCompositions
-      } as AstColumn)
+      const indices = foundFkList.map(({ constraintIndex }) => constraintIndex)
+      const constraints = removeSelectedItems(indices, column.constraints!)
+      const copy = { ...column }
+      if (constraints)
+        copy.constraints = constraints
+      else
+        delete copy.constraints
+      updated.push(copy)
     }
   }
-  for (const [column, { fk }] of found.entries()) {
-    updated.push({
-      entryType: "constraintComposition",
-      constraints: [foreignKeyColumnToTableConstraint(fk, column.name)]
-    } as AstTableConstraintComposition)
+  for (const [column, foundFkList] of found.entries()) {
+    for (const { fk } of foundFkList)
+      updated.push(foreignKeyColumnToTableConstraint(fk, column.name))
   }
   return updated
 }
 
 export function foreignKeyColumnToTableConstraint(
   fk: AstForeignKeyColumnConstraint,
-  columnName: string
+  columnName: string,
+  constraintName?: string
 ): AstForeignKeyTableConstraint {
   const tableFk: AstForeignKeyTableConstraint = {
+    entryType: "constraint",
     constraintType: "foreignKey",
     columns: [columnName],
     referencedTable: fk.referencedTable,
@@ -77,5 +81,7 @@ export function foreignKeyColumnToTableConstraint(
     tableFk.onDelete = fk.onDelete
   if (fk.onUpdate)
     tableFk.onUpdate = fk.onUpdate
+  if (constraintName)
+    tableFk.name = constraintName
   return tableFk
 }

@@ -1,5 +1,5 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyTableConstraint, AstTableConstraintComposition, AstTableEntry, AstUniqueTableConstraint } from "../parser/ast"
-import { Rds, RdsColumn, RdsColumns, RdsForeignKeyColumnConstraint, RdsIndex, RdsPrimaryKeyTableConstraint, RdsTable, RdsTables, RdsUniqueTableConstraint } from "./rds"
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyTableConstraint, AstTableConstraint, AstTableEntry, AstUniqueTableConstraint } from "../ast"
+import { Rds, RdsColumn, RdsColumns, RdsForeignKeyColumnConstraint, RdsIndex, RdsPrimaryKeyTableConstraint, RdsTable, RdsTables, RdsUniqueTableConstraint } from "../rds"
 
 export function createRdsFromAst({ orders }: Ast): Rds {
   const astTables = orders.filter(({ orderType }) => orderType === "createTable") as AstCreateTable[]
@@ -57,33 +57,31 @@ function addColumnsFromAlterTable({ table: tableName, add: entries }: AstAlterTa
 function fillTableAndColumnConstraints(tableName: string, entries: AstTableEntry[], tables: RdsTables) {
   const table = getRdsTable(tableName, tables)
   fillTableConstraints(
-    entries.filter(({ entryType }) => entryType === "constraintComposition") as AstTableConstraintComposition[],
+    entries.filter(({ entryType }) => entryType === "constraint") as AstTableConstraint[],
     table,
     tables
   )
   const astColumns = entries.filter(({ entryType }) => entryType === "column") as AstColumn[]
-  astColumns.forEach(({ name, constraintCompositions }) => {
-    if (constraintCompositions)
-      fillColumnConstraints(constraintCompositions, getRdsColumn(name, table), tables)
+  astColumns.forEach(({ name, constraints }) => {
+    if (constraints)
+      fillColumnConstraints(constraints, getRdsColumn(name, table), tables)
   })
 }
 
-function fillTableConstraints(astCompos: AstTableConstraintComposition[], table: RdsTable, tables: RdsTables) {
-  for (const { constraints } of astCompos) {
-    for (const astConstraint of constraints) {
-      switch (astConstraint.constraintType) {
-        case "primaryKey":
-          fillPrimaryKeyTableConstraint(astConstraint, table)
-          break
-        case "unique":
-          fillUniqueTableConstraint(astConstraint, table)
-          break
-        case "foreignKey":
-          fillForeignKeyTableConstraint(astConstraint, table, tables)
-          break
-        default:
-          throw new Error(`Unknown table constraint type: ${astConstraint!.constraintType}`)
-      }
+function fillTableConstraints(astConstraints: AstTableConstraint[], table: RdsTable, tables: RdsTables) {
+  for (const astConstraint of astConstraints) {
+    switch (astConstraint.constraintType) {
+      case "primaryKey":
+        fillPrimaryKeyTableConstraint(astConstraint, table)
+        break
+      case "unique":
+        fillUniqueTableConstraint(astConstraint, table)
+        break
+      case "foreignKey":
+        fillForeignKeyTableConstraint(astConstraint, table, tables)
+        break
+      default:
+        throw new Error(`Unknown table constraint type: ${astConstraint!.constraintType}`)
     }
   }
 }
@@ -171,37 +169,35 @@ function fillForeignKeyColumnConstraint(astConstraint: AstForeignKeyColumnConstr
   columnConstraints.references.push(constraint)
 }
 
-function fillColumnConstraints(astCompos: AstColumnConstraintComposition[], column: RdsColumn, tables: RdsTables) {
-  for (const { constraints } of astCompos) {
-    for (const astConstraint of constraints) {
-      switch (astConstraint.constraintType) {
-        case "notNull":
-          column.constraints.notNull = true
-          break
-        case "null":
-          break
-        case "primaryKey":
-          column.constraints.primaryKey = true
-          break
-        case "autoincrement":
-          column.constraints.autoincrement = true
-          break
-        case "unique":
-          column.constraints.unique = true
-          break
-        case "foreignKey":
-          fillForeignKeyColumnConstraint(astConstraint, column, tables)
-          break
-        case "default":
-          column.constraints.default = {
-            value: astConstraint.value.value
-          }
-          if (astConstraint.value.type === "sqlExpr")
-            column.constraints.default.isSqlExpr = true
-          break
-        default:
-          throw new Error(`Unknown column constraint type: ${astConstraint!.constraintType}`)
-      }
+function fillColumnConstraints(astConstraints: AstColumnConstraint[], column: RdsColumn, tables: RdsTables) {
+  for (const astConstraint of astConstraints) {
+    switch (astConstraint.constraintType) {
+      case "notNull":
+        column.constraints.notNull = true
+        break
+      case "null":
+        break
+      case "primaryKey":
+        column.constraints.primaryKey = true
+        break
+      case "autoincrement":
+        column.constraints.autoincrement = true
+        break
+      case "unique":
+        column.constraints.unique = true
+        break
+      case "foreignKey":
+        fillForeignKeyColumnConstraint(astConstraint, column, tables)
+        break
+      case "default":
+        column.constraints.default = {
+          value: astConstraint.value.value
+        }
+        if (astConstraint.value.type === "sqlExpr")
+          column.constraints.default.isSqlExpr = true
+        break
+      default:
+        throw new Error(`Unknown column constraint type: ${astConstraint!.constraintType}`)
     }
   }
 }

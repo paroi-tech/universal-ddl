@@ -4,8 +4,9 @@ import commandLineUsage = require("command-line-usage")
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { basename, dirname, extname } from "path"
 import { parseDdl } from "./api"
-import { Dialect, generateDdl } from "./dialect-generators"
-import { Ast } from "./parser/ast"
+import { Ast } from "./ast"
+import { generateDdl } from "./dialect-generators"
+import { Dialect } from "./exported-definitions"
 
 class InvalidArgumentError extends Error {
   readonly causeCode = "invalidArgument"
@@ -25,7 +26,7 @@ const optionDefinitions = [
     name: "autofix",
     alias: "a",
     type: Boolean,
-    description: "Enable autofixes."
+    description: "Enable autofix."
   },
   {
     name: "output-dir",
@@ -59,6 +60,12 @@ const optionDefinitions = [
     description: "Generate a DDL using the Universal DDL syntax."
   },
   {
+    name: "generate-drop",
+    alias: "d",
+    type: Boolean,
+    description: "Generate drop statements (except for the Universal DDL output)."
+  },
+  {
     name: "encoding",
     alias: "e",
     type: String,
@@ -75,7 +82,7 @@ const optionDefinitions = [
     type: String,
     multiple: true,
     defaultOption: true,
-    description: "The source file.",
+    description: "The source file (by default at last position).",
     typeLabel: "{underline file}",
   },
 ]
@@ -107,7 +114,7 @@ function printHelp() {
   const sections = [
     {
       header: "Universal DDL",
-      content: "Parse a DDL in a universal format, then generates DDL for your DBMS."
+      content: "Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS."
     },
     {
       header: "Options",
@@ -141,8 +148,7 @@ function processFile(file: string, options) {
     throw new InvalidArgumentError(`Cannot read file: ${file}`)
   }
   const bnad = baseNameAndDir(file)
-  const autofix = options.autofix ? { foreignKeys: true } : undefined
-  const ast = parseDdl(input, { freeze: true, checkConsistency: true, autofix })
+  const ast = parseDdl(input, { freeze: true, checkConsistency: true, autofix: !!options.autofix })
   if (options.postgresql)
     writeDdl(ast, "postgresql", options, bnad)
   if (options.sqlite)
@@ -154,7 +160,9 @@ function processFile(file: string, options) {
 }
 
 function writeDdl(ast: Ast, dialect: Dialect, options, bnad: BaseNameAndDir) {
-  const ddl = generateDdl(ast, dialect)
+  const ddl = generateDdl(ast, dialect, {
+    generateDrop: !!options["generate-drop"]
+  })
   const dir = normalizePath(options["output-dir"], bnad.directory)
   const file = `${dir}/${bnad.fileBaseName}.${dialect}${bnad.extension}`
   if (!options.force && existsSync(file))

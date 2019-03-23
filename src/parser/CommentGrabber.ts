@@ -1,5 +1,5 @@
+import { AstCommentable } from "../ast"
 import { AntlrRuleContext, AntlrToken } from "./antlr4-utils"
-import { AstCommentable } from "./ast"
 import { DdlParsingContext } from "./DdlExtractor"
 
 export interface GrabbedCommentsResult {

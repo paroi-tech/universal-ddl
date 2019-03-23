@@ -1,4 +1,4 @@
-import { Ast } from "../parser/ast"
+import { Ast } from "../ast"
 import { ArrayWalker, astWalker, isArrayWalker, isObjectWalker, NodeWalker, ObjectWalker } from "./ast-walker"
 
 export type AstModifier = AstReplacer | AstInserter | AstListener
@@ -59,6 +59,14 @@ class AstModifierExecutor {
 
   private walk(node: any, walker: NodeWalker): any | undefined {
     if (isObjectWalker(walker)) {
+      if (walker.self) {
+        return applyReplacersOnSelf(
+          node,
+          this.getHookListener(walker),
+          this.getHookReplacer(walker),
+          node => this.walk(node, walker.self!)
+        )
+      }
       return applyReplacersOnObject(
         node,
         this.getHookListener(walker),
@@ -112,11 +120,21 @@ function keepSame<T>(something: T): T {
   return something
 }
 
+// tslint:disable-next-line: no-empty
 function emptyListener() {
 }
 
 type ChildReplacers<T = any> = {
   [childName in keyof T]?: NodeReplacer<T[childName]>
+}
+
+function applyReplacersOnSelf<T>(
+  source: T, listener: NodeListener, replacer: NodeReplacer<T>, selfReplacer: NodeReplacer<T>
+): T | undefined {
+  listener(source)
+  const updated = replacer(source)
+  if (updated)
+    return selfReplacer(updated)
 }
 
 function applyReplacersOnObject<T>(
@@ -157,18 +175,20 @@ function applyReplacersOnArray(
     if (updated !== source)
       copy = updated
     const insertedAfter: Array<{ index: number, newChildren: any[] }> = []
-    for (const [index, child] of source.entries()) {
+    for (const [index, child] of updated.entries()) {
       let updatedChild = child
       if (childReplacer) {
         updatedChild = childReplacer(child)
         if (updatedChild !== child) {
           if (!copy)
-            copy = [...source]
+            copy = [...updated]
           copy[index] = updatedChild
         }
       }
       if (childInserter && updatedChild !== undefined) {
-        const newChildren = childInserter(updatedChild)
+        let newChildren = childInserter(updatedChild)
+        if (newChildren && childReplacer)
+          newChildren = newChildren.map(childReplacer).filter(child => child !== undefined)
         if (newChildren)
           insertedAfter.push({ index: index + 1, newChildren })
       }

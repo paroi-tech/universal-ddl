@@ -1,6 +1,6 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraintComposition, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstOrder, AstTableConstraintComposition, AstTableEntry } from "../../parser/ast"
+import { AstAlterTable, AstColumn, AstColumnConstraint, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstOrder, AstTableConstraint } from "../../ast"
 import { AstModifier } from "../ast-modifier"
-import { removeSelectedColumnConstraints, removeSelectedConstraints } from "../modifier-helpers"
+import { removeSelectedItems } from "../modifier-helpers"
 import { foreignKeyColumnToTableConstraint } from "./fk-column-to-table-constraint"
 
 export interface AstModifierProvider {
@@ -24,11 +24,7 @@ export function autofixFk(): AstModifierProvider {
     list.push({
       orderType: "alterTable",
       table: currentTableName,
-      add: [{
-        entryType: "constraintComposition",
-        name: `${currentTableName}_${fk.columns.join("_")}_fk_${fk.referencedTable}`,
-        constraints: [fk]
-      }]
+      add: [fk]
     })
   }
 
@@ -47,32 +43,32 @@ export function autofixFk(): AstModifierProvider {
       }
     },
     {
-      forEach: "tableConstraintCompositions",
-      replace(node: AstTableConstraintComposition) {
-        const found = findTableForeignKeysWithUnknownReferencedTable(node, knownTables)
-        if (found.length === 0)
+      forEach: "tableConstraint",
+      replace(node: AstTableConstraint) {
+        if (node.constraintType !== "foreignKey" || knownTables.has(node.referencedTable))
           return node
-        for (const { fk } of found)
-          addAlterTable(fk)
-        return removeSelectedConstraints(found.map(({ constraintIndex }) => constraintIndex), node)
+        addAlterTable(node)
       }
     },
     {
       forEach: "column",
       replace(node: AstColumn) {
-        if (!node.constraintCompositions)
+        if (!node.constraints)
           return node
-        const found = findColumnForeignKeysWithUnknownReferencedTable(node.constraintCompositions, knownTables)
+        const found = findColumnForeignKeysWithUnknownReferencedTable(node.constraints, knownTables)
         if (found.length === 0)
           return node
-        for (const { fk } of found)
-          addAlterTable(foreignKeyColumnToTableConstraint(fk, node.name))
-        const constraintCompositions = removeSelectedColumnConstraints(found, node.constraintCompositions)
+        for (const { fk } of found) {
+          const fkName = `${currentTableName}_${node.name}_fk_${fk.referencedTable}`
+          addAlterTable(foreignKeyColumnToTableConstraint(fk, node.name, fkName))
+        }
+        const indices = found.map(({ constraintIndex }) => constraintIndex)
+        const constraints = removeSelectedItems(indices, node.constraints)
         const copy = { ...node }
-        if (!constraintCompositions)
-          delete copy.constraintCompositions
+        if (!constraints)
+          delete copy.constraints
         else
-          copy.constraintCompositions = constraintCompositions
+          copy.constraints = constraints
         return copy
       }
     },
@@ -101,46 +97,23 @@ export function autofixFk(): AstModifierProvider {
 }
 
 interface FoundColumnFk {
-  compoIndex: number
   constraintIndex: number
   fk: AstForeignKeyColumnConstraint
 }
 
 function findColumnForeignKeysWithUnknownReferencedTable(
-  compos: AstColumnConstraintComposition[],
+  constraints: AstColumnConstraint[] | undefined,
   knownTables: Set<string>
 ): FoundColumnFk[] {
   const result: FoundColumnFk[] = []
-  for (const [compoIndex, compo] of compos.entries()) {
-    for (const [constraintIndex, constraint] of compo.constraints.entries()) {
+  if (constraints) {
+    for (const [constraintIndex, constraint] of constraints.entries()) {
       if (constraint.constraintType === "foreignKey" && !knownTables.has(constraint.referencedTable)) {
         result.push({
-          compoIndex,
           constraintIndex,
           fk: constraint
         })
       }
-    }
-  }
-  return result
-}
-
-interface FoundTableFk {
-  constraintIndex: number
-  fk: AstForeignKeyTableConstraint
-}
-
-function findTableForeignKeysWithUnknownReferencedTable(
-  compo: AstTableConstraintComposition,
-  knownTables: Set<string>
-): FoundTableFk[] {
-  const result: FoundTableFk[] = []
-  for (const [constraintIndex, constraint] of compo.constraints.entries()) {
-    if (constraint.constraintType === "foreignKey" && !knownTables.has(constraint.referencedTable)) {
-      result.push({
-        constraintIndex,
-        fk: constraint
-      })
     }
   }
   return result

@@ -1,5 +1,5 @@
-import { parseDdl, parseDdlToRds } from "../src/api"
-import { AstAlterTable, AstForeignKeyTableConstraint, AstTableConstraintComposition } from "../src/parser/ast"
+import { parseDdl } from "../src/api"
+import { AstAlterTable, AstForeignKeyTableConstraint } from "../src/ast"
 
 describe("Autofix FK", () => {
   test(`Cross table foreign keys as column constraints`, () => {
@@ -18,8 +18,8 @@ describe("Autofix FK", () => {
     expect(ast.orders[2].orderType).toBe("alterTable")
     const alterTable = ast.orders[2] as AstAlterTable
     expect(alterTable.table).toBe("A")
-    expect(alterTable.add[0].entryType).toBe("constraintComposition")
-    const fk = (alterTable.add[0] as AstTableConstraintComposition).constraints[0] as AstForeignKeyTableConstraint
+    expect(alterTable.add[0].entryType).toBe("constraint")
+    const fk = alterTable.add[0] as AstForeignKeyTableConstraint
     expect(fk.referencedTable).toBe("B")
   })
 
@@ -41,8 +41,8 @@ describe("Autofix FK", () => {
     expect(ast.orders[2].orderType).toBe("alterTable")
     const alterTable = ast.orders[2] as AstAlterTable
     expect(alterTable.table).toBe("A")
-    expect(alterTable.add[0].entryType).toBe("constraintComposition")
-    const fk = (alterTable.add[0] as AstTableConstraintComposition).constraints[0] as AstForeignKeyTableConstraint
+    expect(alterTable.add[0].entryType).toBe("constraint")
+    const fk = alterTable.add[0] as AstForeignKeyTableConstraint
     expect(fk.referencedTable).toBe("B")
   })
 })

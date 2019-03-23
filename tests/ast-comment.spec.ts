@@ -1,4 +1,4 @@
-import { AstColumn, AstCreateTable } from "../src/parser/ast"
+import { AstColumn, AstCreateTable } from "../src/ast"
 import { parseDdlToAst } from "../src/parser/parse-ddl"
 
 describe("AST Specification for comments", () => {

@@ -1,10 +1,11 @@
-import { AstColumnConstraint, AstOrder, AstTableConstraint, AstTableEntry } from "../parser/ast"
+import { AstColumnConstraint, AstOrder, AstTableConstraint, AstTableEntry } from "../ast"
 
 export type NodeWalker = ObjectWalker | ArrayWalker | NodeWalkerProvider
 
 export interface ObjectWalker {
   hookName?: string
   type: "object",
+  self?: NodeWalker
   children?: { [childName: string]: NodeWalker }
 }
 
@@ -84,74 +85,62 @@ const tableEntryWalkers: NodeWalkers = {
     hookName: "column",
     type: "object",
     children: {
-      constraintCompositions: {
-        hookName: "columnConstraintCompositions",
-        type: "object",
-        children: {
-          constraints: {
-            hookName: "columnConstraints",
-            type: "array",
-            child: ({ constraintType }: AstColumnConstraint) => columnConstraintWalkers[constraintType]
-          }
-        }
+      constraints: {
+        hookName: "columnConstraints",
+        type: "array",
+        child: ({ constraintType }: AstColumnConstraint) => columnConstraintWalkers[constraintType]
       }
     }
   },
-  constraintComposition: {
-    hookName: "tableConstraintCompositions",
+  constraint: {
+    hookName: "tableConstraint",
     type: "object",
-    children: {
-      constraints: {
-        hookName: "tableConstraints",
-        type: "array",
-        child: ({ constraintType }: AstTableConstraint) => tableConstraintWalkers[constraintType]
-      }
-    }
+    self: ({ constraintType }: AstTableConstraint) => tableConstraintWalkers[constraintType]
   },
 }
 
 const tableConstraintWalkers: NodeWalkers = {
   primaryKey: {
-    hookName: "",
+    hookName: "primaryKeyTableConstraint",
     type: "object",
   },
   foreignKey: {
-    hookName: "",
+    hookName: "foreignKeyTableConstraint",
     type: "object",
   },
   unique: {
-    hookName: "",
+    hookName: "uniqueTableConstraint",
     type: "object",
   },
 }
 
 const columnConstraintWalkers: NodeWalkers = {
   notNull: {
-    hookName: "notNull",
+    hookName: "notNullColumnConstraint",
     type: "object",
   },
   null: {
-    hookName: "null",
+    hookName: "nullColumnConstraint",
     type: "object",
   },
   default: {
-    hookName: "default",
+    hookName: "defaultColumnConstraint",
     type: "object",
   },
   autoincrement: {
-    hookName: "autoincrement",
+    hookName: "autoincrementColumnConstraint",
     type: "object",
   },
   primaryKey: {
-    hookName: "primaryKey",
+    hookName: "primaryKeyColumnConstraint",
     type: "object",
   },
   foreignKey: {
-    hookName: "foreignKey",
+    hookName: "foreignKeyColumnConstraint",
     type: "object",
   },
   unique: {
-    hookName: "unique",
+    hookName: "uniqueColumnConstraint",
     type: "object",
   },
 }
