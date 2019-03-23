@@ -1,6 +1,6 @@
 {
   "name": "@tomko/universal-ddl",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.",
   "author": "tomko.team",
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paleo/universal-ddl.git"
+    "url": "git+https://github.com/tomko-team/universal-ddl.git"
   },
   "dependencies": {
     "antlr4": "^4.7.2",
