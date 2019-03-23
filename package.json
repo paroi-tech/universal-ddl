@@ -1,6 +1,6 @@
 {
   "name": "@tomko/universal-ddl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.",
   "author": "tomko.team",
   "scripts": {

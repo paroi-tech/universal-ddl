@@ -40,6 +40,8 @@ npm install @tomko/universal-ddl
 Then, use it:
 
 ```js
+const { parseDdl, generateDdl, createRds, parseDdlToRds } = require("@tomko/universal-ddl")
+
 const input = `
   create table t1 (
     a integer not null primary key autoincrement
