@@ -24,6 +24,7 @@ Available options:
   -s, --sqlite                 Generate a DDL for SQLite.
   -m, --mariadb                Generate a DDL for Mariadb or MySQL.
   -u, --universal-ddl          Generate a DDL using the Universal DDL syntax.
+  -d, --generate-drop          Generate drop statements (except for the Universal DDL output).
   -e, --encoding string        Encoding for input and output file(s) (default is utf8).
   -f, --force                  Overwrite output files.
   --src file                   The source file (by default at last position).
