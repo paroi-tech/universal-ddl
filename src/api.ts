@@ -2,13 +2,15 @@ import { Ast } from "./ast"
 import { AstModifier, modifyAst } from "./ast-modifier/ast-modifier"
 import { autofixFk } from "./ast-modifier/modifiers/autofix-fk"
 import ConsistencyChecker from "./consistency-checker/ConsistencyChecker"
-import { generateDdl } from "./dialect-generators"
-import { ConsistencyCheckerReport } from "./exported-definitions";
+import { generateDdl as generateDdlDialect } from "./dialect-generators"
+import { ConsistencyCheckerReport, Dialect, GeneratorOptions } from "./exported-definitions"
 import { parseDdlToAst } from "./parser/parse-ddl"
 import { Rds } from "./rds"
 import { createRdsFromAst } from "./rds-provider/rds-provider"
 
-export { generateDdl }
+export function generateDdl(ast: Ast, dialect: Dialect, options?: GeneratorOptions): string {
+  return generateDdlDialect(ast, dialect, options)
+}
 
 export interface ParseDdlOptions {
   autofix?: boolean | AutofixOptions

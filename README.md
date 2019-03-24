@@ -95,7 +95,7 @@ npm run build
 npm run test
 ```
 
-### Developer resources
+### Development environment
 
 With VS Code, our recommanded plugins are:
 
