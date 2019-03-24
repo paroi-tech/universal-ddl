@@ -1,5 +1,5 @@
-import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyTableConstraint, AstTableConstraint, AstTableEntry, AstUniqueTableConstraint } from "../ast"
-import { Rds, RdsColumn, RdsColumns, RdsForeignKeyColumnConstraint, RdsIndex, RdsPrimaryKeyTableConstraint, RdsTable, RdsTables, RdsUniqueTableConstraint } from "../rds"
+import { Ast, AstAlterTable, AstColumn, AstColumnConstraint, AstCreateIndex, AstCreateTable, AstForeignKeyColumnConstraint, AstForeignKeyTableConstraint, AstIndex, AstPrimaryKeyColumnConstraint, AstPrimaryKeyTableConstraint, AstTableConstraint, AstTableEntry, AstUniqueColumnConstraint, AstUniqueTableConstraint } from "../ast"
+import { Rds, RdsColumn, RdsColumns, RdsForeignKeyConstraint, RdsIndex, RdsPrimaryKeyConstraint, RdsTable, RdsTables, RdsUniqueConstraint } from "../rds"
 
 export function createRdsFromAst({ orders }: Ast): Rds {
   const astTables = orders.filter(({ orderType }) => orderType === "createTable") as AstCreateTable[]
@@ -72,13 +72,13 @@ function fillTableConstraints(astConstraints: AstTableConstraint[], table: RdsTa
   for (const astConstraint of astConstraints) {
     switch (astConstraint.constraintType) {
       case "primaryKey":
-        fillPrimaryKeyTableConstraint(astConstraint, table)
+        fillPrimaryKeyConstraint(astConstraint, table)
         break
       case "unique":
-        fillUniqueTableConstraint(astConstraint, table)
+        fillUniqueConstraint(astConstraint, table)
         break
       case "foreignKey":
-        fillForeignKeyTableConstraint(astConstraint, table, tables)
+        fillForeignKeyConstraint(astConstraint, table, tables)
         break
       default:
         throw new Error(`Unknown table constraint type: ${astConstraint!.constraintType}`)
@@ -86,87 +86,94 @@ function fillTableConstraints(astConstraints: AstTableConstraint[], table: RdsTa
   }
 }
 
-function fillPrimaryKeyTableConstraint(astConstraint: AstPrimaryKeyTableConstraint, table: RdsTable) {
+function fillPrimaryKeyConstraint(astConstraint: AstPrimaryKeyTableConstraint, table: RdsTable) {
   if (table.constraints.primaryKey)
     throw new Error(`Table ${table.name} cannot have several primary keys`)
-  if (astConstraint.columns.length === 1)
-    getRdsColumn(astConstraint.columns[0], table).constraints.primaryKey = true
-  else {
-    const constraint: RdsPrimaryKeyTableConstraint = {
-      constraintType: "primaryKeyConstraint",
-      table,
-      columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
-    }
-    if (astConstraint.blockComment)
-      constraint.blockComment = astConstraint.blockComment
-    if (astConstraint.inlineComment)
-      constraint.inlineComment = astConstraint.inlineComment
-    table.constraints.primaryKey = constraint
+  const constraint = createPrimaryKeyConstraint(astConstraint, table)
+  table.constraints.primaryKey = constraint
+  if (constraint.columns.length === 1)
+    constraint.columns[0].constraints.primaryKey = constraint
+}
+
+function createPrimaryKeyConstraint(astConstraint: AstPrimaryKeyTableConstraint, table: RdsTable) {
+  const constraint: RdsPrimaryKeyConstraint = {
+    constraintType: "primaryKey",
+    table,
+    columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
+  }
+  if (astConstraint.blockComment)
+    constraint.blockComment = astConstraint.blockComment
+  if (astConstraint.inlineComment)
+    constraint.inlineComment = astConstraint.inlineComment
+  return constraint
+}
+
+function fillUniqueConstraint(astConstraint: AstUniqueTableConstraint, table: RdsTable) {
+  const constraint = createUniqueConstraint(astConstraint, table)
+
+  if (!table.constraints.uniqueConstraints)
+    table.constraints.uniqueConstraints = []
+  table.constraints.uniqueConstraints.push(constraint)
+
+  if (constraint.columns.length === 1)
+    constraint.columns[0].constraints.unique = constraint
+}
+
+function createUniqueConstraint(astConstraint: AstUniqueTableConstraint, table: RdsTable) {
+  const constraint: RdsUniqueConstraint = {
+    constraintType: "unique",
+    table,
+    columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
+  }
+  if (astConstraint.blockComment)
+    constraint.blockComment = astConstraint.blockComment
+  if (astConstraint.inlineComment)
+    constraint.inlineComment = astConstraint.inlineComment
+  return constraint
+}
+
+function fillForeignKeyConstraint(astConstraint: AstForeignKeyTableConstraint, table: RdsTable, tables: RdsTables) {
+  const constraint = createForeignKeyConstraint(astConstraint, table, tables)
+
+  if (!table.constraints.foreignKeys)
+    table.constraints.foreignKeys = []
+  table.constraints.foreignKeys.push(constraint)
+
+  if (!constraint.referencedTable.referencedBy)
+    constraint.referencedTable.referencedBy = []
+  constraint.referencedTable.referencedBy.push(constraint)
+
+  if (constraint.columns.length === 1) {
+    const column = constraint.columns[0]
+    if (!column.constraints.references)
+      column.constraints.references = []
+    column.constraints.references.push(constraint)
+
+    const referencedColumn = constraint.referencedColumns[0]
+    if (!referencedColumn.referencedBy)
+      referencedColumn.referencedBy = []
+    referencedColumn.referencedBy.push(constraint)
   }
 }
 
-function fillUniqueTableConstraint(astConstraint: AstUniqueTableConstraint, table: RdsTable) {
-  if (astConstraint.columns.length === 1)
-    getRdsColumn(astConstraint.columns[0], table).constraints.unique = true
-  else {
-    const constraint: RdsUniqueTableConstraint = {
-      constraintType: "uniqueConstraint",
-      table,
-      columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
-    }
-    if (astConstraint.blockComment)
-      constraint.blockComment = astConstraint.blockComment
-    if (astConstraint.inlineComment)
-      constraint.inlineComment = astConstraint.inlineComment
-    if (!table.constraints.uniqueConstraints)
-      table.constraints.uniqueConstraints = []
-    table.constraints.uniqueConstraints.push(constraint)
-  }
-}
-
-function fillForeignKeyTableConstraint(astConstraint: AstForeignKeyTableConstraint, table: RdsTable, tables: RdsTables) {
-  if (astConstraint.columns.length === 1) {
-    const columnName = astConstraint.columns[0]
-    const referencedColumn = astConstraint.referencedColumns && astConstraint.referencedColumns[0] || columnName
-    fillForeignKeyColumnConstraint(
-      {
-        constraintType: "foreignKey",
-        referencedColumn,
-        referencedTable: astConstraint.referencedTable,
-        onDelete: astConstraint.onDelete,
-        onUpdate: astConstraint.onUpdate
-      },
-      getRdsColumn(columnName, table),
-      tables
-    )
-  } else {
-    const constraint: RdsUniqueTableConstraint = {
-      constraintType: "uniqueConstraint",
-      table,
-      columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
-    }
-    if (astConstraint.blockComment)
-      constraint.blockComment = astConstraint.blockComment
-    if (astConstraint.inlineComment)
-      constraint.inlineComment = astConstraint.inlineComment
-    if (!table.constraints.uniqueConstraints)
-      table.constraints.uniqueConstraints = []
-    table.constraints.uniqueConstraints.push(constraint)
-  }
-}
-
-function fillForeignKeyColumnConstraint(astConstraint: AstForeignKeyColumnConstraint, column: RdsColumn, tables: RdsTables) {
+function createForeignKeyConstraint(astConstraint: AstForeignKeyTableConstraint, table: RdsTable, tables: RdsTables) {
   const referencedTable = getRdsTable(astConstraint.referencedTable, tables)
-  const constraint: RdsForeignKeyColumnConstraint = {
-    referencedColumn: getRdsColumn(astConstraint.referencedColumn || column.name, referencedTable),
+  const constraint: RdsForeignKeyConstraint = {
+    constraintType: "foreignKey",
+    table,
+    columns: astConstraint.columns.map(columnName => getRdsColumn(columnName, table)),
     referencedTable,
-    onDelete: astConstraint.onDelete,
-    onUpdate: astConstraint.onUpdate
+    referencedColumns: getRdsColumns(astConstraint.referencedColumns || astConstraint.columns, referencedTable)
   }
-  const columnConstraints = column.constraints
-  if (!columnConstraints.references)
-    columnConstraints.references = []
-  columnConstraints.references.push(constraint)
+  if (astConstraint.onDelete)
+    constraint.onDelete = astConstraint.onDelete
+  if (astConstraint.onUpdate)
+    constraint.onUpdate = astConstraint.onUpdate
+  if (astConstraint.blockComment)
+    constraint.blockComment = astConstraint.blockComment
+  if (astConstraint.inlineComment)
+    constraint.inlineComment = astConstraint.inlineComment
+  return constraint
 }
 
 function fillColumnConstraints(astConstraints: AstColumnConstraint[], column: RdsColumn, tables: RdsTables) {
@@ -178,16 +185,16 @@ function fillColumnConstraints(astConstraints: AstColumnConstraint[], column: Rd
       case "null":
         break
       case "primaryKey":
-        column.constraints.primaryKey = true
+        fillPrimaryKeyConstraint(toAstPrimaryKeyTableConstraint(astConstraint, column), column.table)
         break
       case "autoincrement":
         column.constraints.autoincrement = true
         break
       case "unique":
-        column.constraints.unique = true
+        fillUniqueConstraint(toAstUniqueTableConstraint(astConstraint, column), column.table)
         break
       case "foreignKey":
-        fillForeignKeyColumnConstraint(astConstraint, column, tables)
+        fillForeignKeyConstraint(toAstForeignKeyTableConstraint(astConstraint, column), column.table, tables)
         break
       case "default":
         column.constraints.default = {
@@ -202,10 +209,49 @@ function fillColumnConstraints(astConstraints: AstColumnConstraint[], column: Rd
   }
 }
 
+function toAstPrimaryKeyTableConstraint(astSource: AstPrimaryKeyColumnConstraint, column: RdsColumn) {
+  const constraint: AstPrimaryKeyTableConstraint = {
+    entryType: "constraint",
+    constraintType: "primaryKey",
+    columns: [column.name],
+  }
+  if (astSource.name)
+    constraint.name = astSource.name
+  return constraint
+}
+
+function toAstUniqueTableConstraint(astSource: AstUniqueColumnConstraint, column: RdsColumn) {
+  const constraint: AstUniqueTableConstraint = {
+    entryType: "constraint",
+    constraintType: "unique",
+    columns: [column.name],
+  }
+  if (astSource.name)
+    constraint.name = astSource.name
+  return constraint
+}
+
+function toAstForeignKeyTableConstraint(astSource: AstForeignKeyColumnConstraint, column: RdsColumn) {
+  const constraint: AstForeignKeyTableConstraint = {
+    entryType: "constraint",
+    constraintType: "foreignKey",
+    columns: [column.name],
+    referencedTable: astSource.referencedTable,
+    referencedColumns: [column.name],
+  }
+  if (astSource.name)
+    constraint.name = astSource.name
+  if (astSource.onDelete)
+    constraint.onDelete = astSource.onDelete
+  if (astSource.onUpdate)
+    constraint.onUpdate = astSource.onUpdate
+  return constraint
+}
+
 function fillTableIndexes({ table: tableName, index }: AstCreateIndex, tables: RdsTables) {
   const table = getRdsTable(tableName, tables)
   if (isAstUniqueTableConstraint(index))
-    fillUniqueTableConstraint(index, table)
+    fillUniqueConstraint(index, table)
   else
     fillIndex(index, table)
 }
@@ -228,6 +274,13 @@ function fillIndex(astIndex: AstIndex, table: RdsTable) {
   table.indexes.push(index)
 }
 
+function getRdsTable(tableName: string, tables: RdsTables) {
+  const table = tables[tableName]
+  if (!table)
+    throw new Error(`Unknown table "${tableName}"`)
+  return table
+}
+
 function getRdsColumn(columnName: string, table: RdsTable) {
   const column = table.columns[columnName]
   if (!column)
@@ -235,9 +288,6 @@ function getRdsColumn(columnName: string, table: RdsTable) {
   return column
 }
 
-function getRdsTable(tableName: string, tables: RdsTables) {
-  const table = tables[tableName]
-  if (!table)
-    throw new Error(`Unknown table "${tableName}"`)
-  return table
+function getRdsColumns(columnNames: string[], table: RdsTable) {
+  return columnNames.map(columnName => getRdsColumn(columnName, table))
 }
