@@ -176,9 +176,16 @@ export default class CommentGrabber {
     if (tokens.length === 0)
       return
     const { source } = this.parsingContext
+    const invalid = tokens.find(({ start, stop }) => {
+      if (start + 1 === stop)
+        return false
+      const sep = source[start + 2]
+      return sep !== " " && sep !== "\t"
+    })
+    if (invalid)
+      throw new Error(`Invalid comment syntax: a comment must starts with a space`)
     const com = tokens
       .map(({ start, stop }) => source.substring(start + 3, stop + 1).trimRight())
-      .filter(com => com.length > 0)
       .join("\n")
     return com || undefined
   }

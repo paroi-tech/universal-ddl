@@ -246,5 +246,5 @@ IDENTIFIER: LETTER (LETTER | UNDERSCORE | DIGIT)*;
  */
 
 NEWLINE: ('\r'? '\n' | '\r') -> channel(HIDDEN);
-COMMENT: '-- ' ~[\r\n]* -> channel(HIDDEN);
+COMMENT: ('--' ~[\r\n]*) -> channel(HIDDEN);
 WS: [ \t\f]+ -> channel(HIDDEN);

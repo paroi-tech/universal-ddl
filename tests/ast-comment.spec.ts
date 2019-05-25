@@ -20,6 +20,7 @@ describe("AST Specification for comments", () => {
   test("standalone comments", () => {
     const input = `
       -- comment I #1
+      --
       -- comment I #2
 
        create table t1(
@@ -32,9 +33,16 @@ describe("AST Specification for comments", () => {
     const orders = parseDdlToAst(input).orders
     expect(orders.length).toEqual(3)
     expect(orders[0].orderType).toEqual("comment")
-    expect(orders[0].blockComment).toEqual("comment I #1\ncomment I #2")
+    expect(orders[0].blockComment).toEqual("comment I #1\n\ncomment I #2")
     expect(orders[2].orderType).toEqual("comment")
     expect(orders[2].blockComment).toEqual("comment II #1\ncomment II #2")
+  })
+
+  test("wrong comment", () => {
+    const input = `
+      --wrong
+      `
+    expect(() => parseDdlToAst(input)).toThrowError()
   })
 
   test("inline comments on table", () => {
