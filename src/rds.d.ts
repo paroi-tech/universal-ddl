@@ -5,7 +5,9 @@ export interface Rds {
   tables: RdsTables
 }
 
-export type RdsTables = { [name: string]: RdsTable }
+export interface RdsTables {
+  [name: string]: RdsTable
+}
 
 export interface RdsTable extends RdsCommentable {
   name: string
@@ -15,7 +17,9 @@ export interface RdsTable extends RdsCommentable {
   referencedBy?: RdsForeignKeyConstraint[]
 }
 
-export type RdsColumns = { [name: string]: RdsColumn }
+export interface RdsColumns {
+  [name: string]: RdsColumn
+}
 
 export interface RdsColumn extends RdsCommentable {
   table: RdsTable

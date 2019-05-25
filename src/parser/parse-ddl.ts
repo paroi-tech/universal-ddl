@@ -2,7 +2,7 @@ const { CommonTokenStream, InputStream, tree: { ParseTreeWalker } } = require("a
 const { UniversalDdlLexer } = require("../../antlr-parser/UniversalDdlLexer")
 const { UniversalDdlParser } = require("../../antlr-parser/UniversalDdlParser")
 import { Ast } from "../ast"
-import DdlExtractor from "./DdlExtractor"
+import AstExtractor from "./AstExtractor"
 
 export function parseDdlToAst(source: string): Ast {
   const chars = new InputStream(source)
@@ -21,7 +21,7 @@ export function parseDdlToAst(source: string): Ast {
 
   const tree = parser.script()
 
-  const extractor = new DdlExtractor({
+  const extractor = new AstExtractor({
     source,
     tokenStream,
     tokenTypes: {

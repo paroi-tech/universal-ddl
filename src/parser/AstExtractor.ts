@@ -16,7 +16,7 @@ export interface DdlParsingContext {
   }
 }
 
-export default class DdlExtractor extends (UniversalDdlListener as any) {
+export default class AstExtractor extends (UniversalDdlListener as any) {
   ast?: Ast
   private currentEntries?: AstTableEntry[]
   private currentColumn?: AstColumn

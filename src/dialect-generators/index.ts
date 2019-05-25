@@ -8,7 +8,7 @@ import { makeSqliteDdlGeneratorContext } from "./sqlite-generator"
 import { makeUniversalDdlGeneratorContext } from "./universal-ddl-generator"
 
 export function generateDdl(ast: Ast, dialect: Dialect, options: GeneratorOptions = {}): string {
-  const maker = dialects[dialect.toLowerCase()]
+  const maker = contextMakers[dialect.toLowerCase()]
   if (!maker)
     throw new Error(`Unknown dialect: ${dialect}`)
   const cx = maker(options)
@@ -20,7 +20,11 @@ export function generateDdl(ast: Ast, dialect: Dialect, options: GeneratorOption
   return dropStatements + codeToString(cx, cx.gen("ast", "ast", ast))
 }
 
-const dialects = {
+type ContextMakers = {
+  [K in Dialect]: (options: GeneratorOptions) => GeneratorContext
+}
+
+const contextMakers: ContextMakers = {
   universalddl: makeUniversalDdlGeneratorContext,
   postgresql: makePostgresqlDdlGeneratorContext,
   sqlite: makeSqliteDdlGeneratorContext,

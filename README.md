@@ -59,7 +59,7 @@ const ast = parseDdl(input, {
 // The AST is a pure JSON format, it can be stringified
 console.log(JSON.stringify(ast, undefined, 2))
 
-// How to generate a specific DDL gor your DBMS
+// How to generate a specific DDL for your DBMS
 console.log(generateDdl(ast, "postgresql"))
 
 // Create a RDS (Relational Database Structure). It is a POJO object, higher

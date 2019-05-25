@@ -1,6 +1,6 @@
 import { AstCommentable } from "../ast"
 import { AntlrRuleContext, AntlrToken } from "./antlr4-utils"
-import { DdlParsingContext } from "./DdlExtractor"
+import { DdlParsingContext } from "./AstExtractor"
 
 export interface GrabbedCommentsResult {
   standaloneCommentsBefore: string[]
