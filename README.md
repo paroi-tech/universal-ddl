@@ -1,5 +1,11 @@
 # Universal DDL — `@tomko/universal-ddl`
 
+[![Build Status](https://travis-ci.com/tomko-team/universal-ddl.svg?branch=master)](https://travis-ci.com/tomko-team/universal-ddl)
+[![Dependencies Status](https://david-dm.org/tomko-team/universal-ddl/status.svg)](https://david-dm.org/tomko-team/universal-ddl)
+[![npm](https://img.shields.io/npm/dm/universal-ddl)](https://www.npmjs.com/package/universal-ddl)
+![Type definitions](https://img.shields.io/npm/types/universal-ddl)
+![GitHub](https://img.shields.io/github/license/tomko-team/universal-ddl)
+
 Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.
 
 This package provides a CLI and a programmatic API for Node.js.

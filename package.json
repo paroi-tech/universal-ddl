@@ -1,7 +1,7 @@
 {
-  "name": "@tomko/universal-ddl",
-  "version": "0.2.0",
-  "description": "Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.",
+  "name": "universal-ddl",
+  "version": "0.3.0",
+  "description": "Parses a DDL script in a universal format, then generates DDL scripts for several DBMS.",
   "author": "tomko.team",
   "scripts": {
     "antlr": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o antlr-parser",
@@ -19,31 +19,29 @@
   },
   "dependencies": {
     "antlr4": "^4.7.2",
-    "command-line-args": "^5.0.2",
-    "command-line-usage": "^5.0.5"
+    "command-line-args": "^5.1.1",
+    "command-line-usage": "^6.0.2"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.0.0",
     "@types/command-line-usage": "^5.0.1",
-    "@types/jest": "^24.0.11",
-    "@types/node": "^10.14.2",
-    "jest": "^24.5.0",
-    "rimraf": "^2.6.3",
-    "ts-jest": "^24.0.0",
-    "tslint": "^5.14.0",
-    "typescript": "^3.3.4000"
+    "@types/jest": "^24.0.21",
+    "@types/node": "^10.17.3",
+    "jest": "^24.9.0",
+    "rimraf": "^3.0.0",
+    "ts-jest": "^24.1.0",
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.4"
   },
   "main": "dist/api.js",
   "types": "dist/universal-ddl.d.ts",
   "bin": "./dist/cli.js",
   "license": "CC0-1.0",
   "keywords": [
-    "universal",
     "ddl",
     "postgresql",
     "sqlite",
     "mariadb",
-    "parser",
-    "ast"
+    "mysql"
   ]
 }
