@@ -1,6 +1,6 @@
 {
   "name": "universal-ddl",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Parses a DDL script in a universal format, then generates DDL scripts for several DBMS.",
   "author": "tomko.team",
   "scripts": {
@@ -11,7 +11,8 @@
     "bundle-tsd": "node bundle-tsd/bundle-tsd",
     "build": "npm run clear && npm run antlr && npm run tsc && npm run bundle-tsd",
     "lint": "tslint -p tsconfig.json -t verbose",
-    "test": "jest --watch"
+    "test:watch": "jest --watch",
+    "test": "jest"
   },
   "repository": {
     "type": "git",

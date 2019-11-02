@@ -1,7 +1,8 @@
-# Universal DDL — `@tomko/universal-ddl`
+# Universal DDL — `universal-ddl`
 
 [![Build Status](https://travis-ci.com/tomko-team/universal-ddl.svg?branch=master)](https://travis-ci.com/tomko-team/universal-ddl)
 [![Dependencies Status](https://david-dm.org/tomko-team/universal-ddl/status.svg)](https://david-dm.org/tomko-team/universal-ddl)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/aaf18d43bfa14f7d9de6e4bf2299588d)](https://www.codacy.com/manual/paleo/universal-ddl?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tomko-team/universal-ddl&amp;utm_campaign=Badge_Grade)
 [![npm](https://img.shields.io/npm/dm/universal-ddl)](https://www.npmjs.com/package/universal-ddl)
 ![Type definitions](https://img.shields.io/npm/types/universal-ddl)
 ![GitHub](https://img.shields.io/github/license/tomko-team/universal-ddl)
@@ -15,7 +16,7 @@ This package provides a CLI and a programmatic API for Node.js.
 Example:
 
 ```sh
-npx @tomko/universal-ddl --autofix --postgresql --sqlite path/to/ddl-file.sql
+npx universal-ddl --autofix --postgresql --sqlite path/to/ddl-file.sql
 ```
 
 This command will generate two new files `path/to/ddl-file.postgresql.sql` and `path/to/ddl-file.sqlite.sql`.
@@ -41,13 +42,13 @@ Available options:
 Install as a dependency:
 
 ```sh
-npm install @tomko/universal-ddl
+npm install universal-ddl
 ```
 
 Then, use it:
 
 ```js
-const { parseDdl, generateDdl, createRds, parseDdlToRds } = require("@tomko/universal-ddl")
+const { parseDdl, generateDdl, createRds, parseDdlToRds } = require("universal-ddl")
 
 const input = `
   create table t1 (
