@@ -107,5 +107,4 @@ npm run test
 With VS Code, our recommanded plugins are:
 
 - **ANTLR4 grammar syntax support** from Mike Lischke (`mike-lischke.vscode-antlr4`)
-- **Todo Tree** from Gruntfuggly (`gruntfuggly.todo-tree`)
 - **TSLint** from Microsoft (`ms-vscode.vscode-typescript-tslint-plugin`)
