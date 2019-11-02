@@ -5,7 +5,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/aaf18d43bfa14f7d9de6e4bf2299588d)](https://www.codacy.com/manual/paleo/universal-ddl?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tomko-team/universal-ddl&amp;utm_campaign=Badge_Grade)
 [![npm](https://img.shields.io/npm/dm/universal-ddl)](https://www.npmjs.com/package/universal-ddl)
 ![Type definitions](https://img.shields.io/npm/types/universal-ddl)
-![GitHub](https://img.shields.io/github/license/tomko-team/universal-ddl)
+[![GitHub](https://img.shields.io/github/license/tomko-team/universal-ddl)](https://github.com/tomko-team/universal-ddl)
 
 Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.
 
