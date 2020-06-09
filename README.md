@@ -1,11 +1,11 @@
 # Universal DDL — `universal-ddl`
 
-[![Build Status](https://travis-ci.com/tomko-team/universal-ddl.svg?branch=master)](https://travis-ci.com/tomko-team/universal-ddl)
-[![Dependencies Status](https://david-dm.org/tomko-team/universal-ddl/status.svg)](https://david-dm.org/tomko-team/universal-ddl)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/aaf18d43bfa14f7d9de6e4bf2299588d)](https://www.codacy.com/manual/paleo/universal-ddl?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tomko-team/universal-ddl&amp;utm_campaign=Badge_Grade)
+[![Build Status](https://travis-ci.com/paroi-tech/universal-ddl.svg?branch=master)](https://travis-ci.com/paroi-tech/universal-ddl)
+[![Dependencies Status](https://david-dm.org/paroi-tech/universal-ddl/status.svg)](https://david-dm.org/paroi-tech/universal-ddl)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/aaf18d43bfa14f7d9de6e4bf2299588d)](https://www.codacy.com/manual/paleo/universal-ddl?utm_source=github.com&utm_medium=referral&utm_content=paroi-tech/universal-ddl&utm_campaign=Badge_Grade)
 [![npm](https://img.shields.io/npm/dm/universal-ddl)](https://www.npmjs.com/package/universal-ddl)
 ![Type definitions](https://img.shields.io/npm/types/universal-ddl)
-[![GitHub](https://img.shields.io/github/license/tomko-team/universal-ddl)](https://github.com/tomko-team/universal-ddl)
+[![GitHub](https://img.shields.io/github/license/paroi-tech/universal-ddl)](https://github.com/paroi-tech/universal-ddl)
 
 Parse DDL scripts in a universal format, then generates DDL scripts for several DBMS.
 
@@ -48,36 +48,41 @@ npm install universal-ddl
 Then, use it:
 
 ```js
-const { parseDdl, generateDdl, createRds, parseDdlToRds } = require("universal-ddl")
+const {
+  parseDdl,
+  generateDdl,
+  createRds,
+  parseDdlToRds,
+} = require("universal-ddl");
 
 const input = `
   create table t1 (
     a integer not null primary key autoincrement
   );
-  `
+  `;
 
 // Parse the input DDL and create an AST
 const ast = parseDdl(input, {
   autofix: true,
   checkConsistency: true,
-  freeze: true
-})
+  freeze: true,
+});
 
 // The AST is a pure JSON format, it can be stringified
-console.log(JSON.stringify(ast, undefined, 2))
+console.log(JSON.stringify(ast, undefined, 2));
 
 // How to generate a specific DDL for your DBMS
-console.log(generateDdl(ast, "postgresql"))
+console.log(generateDdl(ast, "postgresql"));
 
 // Create a RDS (Relational Database Structure). It is a POJO object, higher
 // level than an AST. It is recursive, so it can't be stringified.
-const rds = createRds(ast, { freeze: true })
+const rds = createRds(ast, { freeze: true });
 
 // Or, create the same RDS using a shortcut
-const rds2 = parseDdlToRds(input, { autofix: true, freeze: true })
+const rds2 = parseDdlToRds(input, { autofix: true, freeze: true });
 
 // Use the RDS
-console.log(rds.tables["t1"].columns["a"].constraints.notNull) // true
+console.log(rds.tables["t1"].columns["a"].constraints.notNull); // true
 ```
 
 ## Contribute

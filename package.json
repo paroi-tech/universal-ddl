@@ -1,8 +1,8 @@
 {
   "name": "universal-ddl",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Parses a DDL script in a universal format, then generates DDL scripts for several DBMS.",
-  "author": "tomko.team",
+  "author": "Paroi",
   "scripts": {
     "antlr": "java -cp \"antlr-4.7.2-complete.jar\" org.antlr.v4.Tool -Dlanguage=JavaScript UniversalDdl.g4 -o antlr-parser",
     "clear": "rimraf 'dist/*' 'antlr-parser/*'",
@@ -12,27 +12,28 @@
     "build": "npm run clear && npm run antlr && npm run tsc && npm run bundle-tsd",
     "lint": "tslint -p tsconfig.json -t verbose",
     "test:watch": "jest --watch",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "npm run build && npm run test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tomko-team/universal-ddl.git"
+    "url": "git+https://github.com/paroi-tech/universal-ddl.git"
   },
   "dependencies": {
-    "antlr4": "^4.7.2",
+    "antlr4": "^4.8.0",
     "command-line-args": "^5.1.1",
-    "command-line-usage": "^6.0.2"
+    "command-line-usage": "^6.1.0"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.0.0",
     "@types/command-line-usage": "^5.0.1",
-    "@types/jest": "^24.0.21",
-    "@types/node": "^10.17.3",
-    "jest": "^24.9.0",
-    "rimraf": "^3.0.0",
-    "ts-jest": "^24.1.0",
-    "tslint": "^5.20.0",
-    "typescript": "^3.6.4"
+    "@types/jest": "^25.2.3",
+    "@types/node": "^12.12.45",
+    "jest": "^26.0.1",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^26.1.0",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.5"
   },
   "main": "dist/api.js",
   "types": "dist/universal-ddl.d.ts",
